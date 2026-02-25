@@ -1,0 +1,36 @@
+rules:
+  - id: tainted-sql-from-http-request
+    message: This rule is deprecated
+    severity: CRITICAL
+    metadata:
+      likelihood: HIGH
+      impact: HIGH
+      confidence: MEDIUM
+      category: security
+      subcategory:
+        - vuln
+      cwe:
+        - "CWE-89: Improper Neutralization of Special Elements used in an SQL Command ('SQL Injection')"
+      cwe2021-top25: true
+      cwe2022-top25: true
+      owasp:
+        - A01:2017 - Injection
+        - A03:2021 - Injection
+        - A05:2025 - Injection
+      references:
+        - https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html
+        - https://owasp.org/www-community/attacks/SQL_Injection
+      technology:
+        - sql
+        - java
+        - servlets
+        - spring
+      license: Semgrep Rules License v1.0. For more details, visit semgrep.dev/legal/rules-license
+      vulnerability_class:
+        - SQL Injection
+    languages:
+      - java
+    min-version: 1.71.0
+    patterns:
+      - pattern: a()
+      - pattern: b()

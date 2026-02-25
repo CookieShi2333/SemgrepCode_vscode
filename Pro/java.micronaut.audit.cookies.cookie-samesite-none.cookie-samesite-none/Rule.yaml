@@ -1,0 +1,41 @@
+rules:
+  - id: cookie-samesite-none
+    message: 'Detected a cookie options with the `SameSite` flag set to "None". This is a potential security risk that arises from the way web browsers manage cookies. In a typical web application, cookies are used to store and transmit session-related data between a client and a server. To enhance security, cookies can be marked with the "SameSite" attribute, which restricts their usage based on the origin of the page that set them. This attribute can have three values: "Strict," "Lax," or "None". Make sure the `SameSite` attribute of the important cookies (e.g., session cookie) is set to a reasonable value. When `SameSite` is set to "Strict", no 3rd party cookie will be sent with outgoing requests, this is the most secure and private setting but harder to deploy with good usability. Setting it to "Lax" is the minimum requirement.'
+    severity: WARNING
+    metadata:
+      likelihood: LOW
+      impact: LOW
+      confidence: HIGH
+      category: security
+      subcategory:
+        - vuln
+      cwe:
+        - "CWE-1275: Sensitive Cookie with Improper SameSite Attribute"
+      display-name: Improper SameSite Attribute in Cookie
+      functional-categories:
+        - web::search::cookie-config::Micronaut
+      owasp:
+        - A01:2021 - Broken Access Control
+        - A01:2025 - Broken Access Control
+      references:
+        - https://owasp.org/Top10/2025/A01_2025-Broken_Access_Control/
+        - https://owasp.org/Top10/A01_2021-Broken_Access_Control
+        - https://web.dev/articles/samesite-cookies-explained
+      technology:
+        - cookies
+      license: Semgrep Rules License v1.0. For more details, visit semgrep.dev/legal/rules-license
+      vulnerability_class:
+        - Cookie Security
+    languages:
+      - java
+    options:
+      symbolic_propagation: true
+    patterns:
+      - focus-metavariable: $SAME
+      - pattern: $X. ... .sameSite(SameSite.None)
+      - pattern-either:
+          - pattern: io.micronaut.http.cookie.Cookie.of(...). ... .sameSite($SAME)
+          - pattern: (io.micronaut.http.cookie.Cookie $C). ... .sameSite($SAME)
+          - pattern: (io.micronaut.http.netty.cookies.NettyCookie $C). ... .sameSite($SAME)
+          - pattern: (io.micronaut.http.simple.cookies.SimpleCookie $C). ... .sameSite($SAME)
+    fix: SameSite.Strict

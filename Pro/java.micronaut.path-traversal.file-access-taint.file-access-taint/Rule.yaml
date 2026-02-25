@@ -1,0 +1,319 @@
+rules:
+  - id: file-access-taint
+    message: The application builds a file path from potentially untrusted data, which can lead to a path traversal vulnerability. An attacker can manipulate the path which the application uses to access files. If the application does not validate user input and sanitize file paths, sensitive files such as configuration or user data can be accessed, potentially creating or overwriting files. To prevent this vulnerability, validate and sanitize any input that is used to create references to file paths. Also, enforce strict file access controls. For example, choose privileges allowing public-facing applications to access only the required files. In Java, you may also consider using a utility method such as `org.apache.commons.io.FilenameUtils.getName(...)` to only retrieve the file name from the path.
+    severity: ERROR
+    metadata:
+      likelihood: MEDIUM
+      impact: HIGH
+      confidence: HIGH
+      category: security
+      subcategory:
+        - vuln
+      cwe:
+        - "CWE-22: Improper Limitation of a Pathname to a Restricted Directory ('Path Traversal')"
+      cwe2020-top25: true
+      cwe2021-top25: true
+      cwe2022-top25: true
+      display-name: Path Traversal with Micronaut
+      functional-categories:
+        - file::sink::file-access::commons-io
+        - file::sink::file-access::java.io
+        - file::sink::file-access::java.xml
+        - file::source::file-read::commons-io
+        - file::source::file-read::java.io
+        - file::source::file-read::java.xml
+        - web::source::cookie::Micronaut
+        - web::source::form-data::Micronaut
+        - web::source::header::Micronaut
+        - web::source::http-body::Micronaut
+        - web::source::url-path-params::Micronaut
+        - web::source::url-query-string::Micronaut
+      owasp:
+        - A01:2021 - Broken Access Control
+        - A01:2025 - Broken Access Control
+        - A05:2017 - Broken Access Control
+      references:
+        - https://owasp.org/Top10/2025/A01_2025-Broken_Access_Control/
+        - https://owasp.org/Top10/A01_2021-Broken_Access_Control
+        - https://owasp.org/www-community/attacks/Path_Traversal
+        - https://portswigger.net/web-security/file-path-traversal
+      technology:
+        - Micronaut
+        - java
+      license: Semgrep Rules License v1.0. For more details, visit semgrep.dev/legal/rules-license
+      vulnerability_class:
+        - Path Traversal
+    languages:
+      - java
+    mode: taint
+    options:
+      interfile: true
+      taint_assume_safe_booleans: true
+      taint_assume_safe_numbers: true
+    pattern-sources:
+      - label: REQ
+        patterns:
+          - pattern: |
+              @io.micronaut.http.annotation.$METHOD(...)
+              $T $FUNC(..., $TYPE $SOURCE, ...) {...}
+          - focus-metavariable: $SOURCE
+          - metavariable-regex:
+              metavariable: $METHOD
+              regex: (Delete|Get|Head|Options|Patch|Put|Post|Trace|CustomHttpMethod)
+          - metavariable-pattern:
+              metavariable: $TYPE
+              patterns:
+                - patterns:
+                    - pattern-not-regex: ^Session$
+      - label: REQ
+        patterns:
+          - pattern-either:
+              - pattern: (io.micronaut.http.HttpRequest<$ANY> $REQ).$PARAM(...)
+              - pattern: (io.micronaut.http.HttpRequest<?> $REQ).$PARAM(...)
+              - pattern: (io.micronaut.http.HttpRequest $REQ).$PARAM(...)
+          - metavariable-pattern:
+              metavariable: $PARAM
+              patterns:
+                - patterns:
+                    - pattern-either:
+                        - pattern: getCookies
+                        - pattern: getLocale
+                        - pattern: getParameters
+                        - pattern: getPath
+                        - pattern: getUri
+                        - pattern: getBody
+                        - pattern: getContentType
+                        - pattern: getHeaders
+      - label: FILE
+        patterns:
+          - pattern-either:
+              - pattern: new java.io.File(...)
+              - pattern: new java.io.FileReader(...)
+              - pattern: new java.io.FileInputStream(...)
+              - pattern: new java.io.FileOutputStream(...)
+              - pattern: new javax.xml.transform.stream.StreamSource(...)
+        requires: REQ
+    pattern-propagators:
+      - from: $FROM
+        patterns:
+          - pattern-either:
+              - patterns:
+                  - pattern-either:
+                      - pattern: $TO.add($FROM)
+                      - pattern: $TO.add($X, $FROM)
+                      - pattern: $TO.addAll($FROM)
+                      - pattern: $TO.addAll($X, $FROM)
+                      - pattern: $TO.addFirst(..., $FROM, ...)
+                      - pattern: $TO.addLast(..., $FROM, ...)
+                      - pattern: $TO.addAllAbsent(..., $FROM, ...)
+                      - pattern: $TO.addIfAbsent(..., $FROM, ...)
+                      - pattern: $TO.addElement(..., $FROM, ...)
+                      - pattern: $TO.set($X, $FROM)
+                      - pattern: $TO.push(..., $FROM, ...)
+                      - pattern: $TO.setElementAt(..., $FROM, ...)
+                      - pattern: $TO.replaceAll(..., $FROM, ...)
+                      - pattern: $TO.insertElementAt($FROM, ...)
+                  - metavariable-type:
+                      metavariable: $TO
+                      types:
+                        - java.util.List
+                        - java.util.List<$_>
+                        - java.util.Stack
+                        - java.util.Stack<$_>
+                        - java.util.Vector
+                        - java.util.Vector<$_>
+                        - java.util.ArrayList
+                        - java.util.ArrayList<$_>
+                        - java.util.LinkedList
+                        - java.util.LinkedList<$_>
+                        - java.util.AbstractList
+                        - java.util.AbstractList<$_>
+                        - java.util.AbstractSequentialList
+                        - java.util.AbstractSequentialList<$_>
+                        - java.util.concurrent.CopyOnWriteArrayList
+                        - java.util.concurrent.CopyOnWriteArrayList<$_>
+              - patterns:
+                  - pattern-either:
+                      - pattern: $TO.add(..., $FROM, ...)
+                      - pattern: $TO.addFirst(..., $FROM, ...)
+                      - pattern: $TO.addLast(..., $FROM, ...)
+                      - pattern: $TO.addAll(..., $FROM, ...)
+                      - pattern: $TO.put(..., $FROM, ...)
+                      - pattern: $TO.putLast(..., $FROM, ...)
+                      - pattern: $TO.putFirst(..., $FROM, ...)
+                      - pattern: $TO.push(..., $FROM, ...)
+                      - pattern: $TO.offer($FROM, ...)
+                      - pattern: $TO.offerLast($FROM, ...)
+                      - pattern: $TO.offerFirst($FROM, ...)
+                  - metavariable-type:
+                      metavariable: $TO
+                      types:
+                        - java.util.Queue
+                        - java.util.Queue<$_>
+                        - java.util.Deque
+                        - java.util.Deque<$_>
+                        - java.util.ArrayDeque
+                        - java.util.ArrayDeque<$_>
+                        - java.util.AbstractQueue
+                        - java.util.AbstractQueue<$_>
+                        - java.util.concurrent.DelayQueue
+                        - java.util.concurrent.DelayQueue<$_>
+                        - java.util.concurrent.BlockingQueue
+                        - java.util.concurrent.BlockingQueue<$_>
+                        - java.util.concurrent.TransferQueue
+                        - java.util.concurrent.TransferQueue<$_>
+                        - java.util.concurrent.BlockingDeque
+                        - java.util.concurrent.BlockingDeque<$_>
+                        - java.util.concurrent.SynchronousQueue
+                        - java.util.concurrent.SynchronousQueue<$_>
+                        - java.util.concurrent.LinkedTransferQueue
+                        - java.util.concurrent.LinkedTransferQueue<$_>
+                        - java.util.concurrent.ArrayBlockingQueue
+                        - java.util.concurrent.ArrayBlockingQueue<$_>
+                        - java.util.concurrent.LinkedBlockingDeque
+                        - java.util.concurrent.LinkedBlockingDeque<$_>
+                        - java.util.concurrent.LinkedBlockingQueue
+                        - java.util.concurrent.LinkedBlockingQueue<$_>
+                        - java.util.concurrent.PriorityBlockingQueue
+                        - java.util.concurrent.PriorityBlockingQueue<$_>
+                        - java.util.concurrent.ConcurrentLinkedDeque
+                        - java.util.concurrent.ConcurrentLinkedDeque<$_>
+              - patterns:
+                  - pattern-either:
+                      - pattern: $TO.add(..., $FROM, ...)
+                      - pattern: $TO.addAll(..., $FROM, ...)
+                  - metavariable-type:
+                      metavariable: $TO
+                      types:
+                        - java.util.Set
+                        - java.util.Set<$_>
+                        - java.util.TreeSet
+                        - java.util.TreeSet<$_>
+                        - java.util.EnumSet
+                        - java.util.EnumSet<$_>
+                        - java.util.HashSet
+                        - java.util.HashSet<$_>
+                        - java.util.SortedSet
+                        - java.util.SortedSet<$_>
+                        - java.util.AbstractSet
+                        - java.util.AbstractSet<$_>
+                        - java.util.NavigableSet
+                        - java.util.NavigableSet<$_>
+                        - java.util.LinkedHashSet
+                        - java.util.LinkedHashSet<$_>
+                        - java.util.AbstractCollection
+                        - java.util.AbstractCollection<$_>
+                        - java.util.concurrent.CopyOnWriteArraySet
+                        - java.util.concurrent.CopyOnWriteArraySet<$_>
+                        - java.util.concurrent.ConcurrentSkipListSet
+                        - java.util.concurrent.ConcurrentSkipListSet<$_>
+                        - java.util.concurrent.ConcurrentHashMap.KeySetView
+                        - java.util.concurrent.ConcurrentHashMap.KeySetView<$_>
+              - patterns:
+                  - pattern-either:
+                      - pattern: $TO.merge(..., $FROM, ...)
+                      - pattern: $TO.put(..., $FROM, ...)
+                      - pattern: $TO.putAll(..., $FROM, ...)
+                      - pattern: $TO.putIfAbsent(..., $FROM, ...)
+                      - pattern: $TO.replace($X, ..., $FROM, ...)
+                      - pattern: $TO.replaceAll(..., $FROM, ...)
+                  - metavariable-type:
+                      metavariable: $TO
+                      types:
+                        - java.util.Map
+                        - java.util.Map<$_, $_>
+                        - java.util.NavigableMap
+                        - java.util.NavigableMap<$_, $_>
+                        - java.util.SortedMap
+                        - java.util.SortedMap<$_, $_>
+                        - java.util.TreeMap
+                        - java.util.TreeMap<$_, $_>
+                        - java.util.AbstractMap
+                        - java.util.AbstractMap<$_, $_>
+                        - java.util.EnumMap
+                        - java.util.EnumMap<$_, $_>
+                        - java.util.HashMap
+                        - java.util.HashMap<$_, $_>
+                        - java.util.Hashtable
+                        - java.util.Hashtable<$_, $_>
+                        - java.util.IdentityHashMap
+                        - java.util.IdentityHashMap<$_, $_>
+                        - java.util.LinkedHashMap
+                        - java.util.LinkedHashMap<$_, $_>
+                        - java.util.WeakHashMap
+                        - java.util.WeakHashMap<$_, $_>
+                        - java.util.concurrent.ConcurrentMap
+                        - java.util.concurrent.ConcurrentMap<$_, $_>
+                        - java.util.concurrent.ConcurrentHashMap
+                        - java.util.concurrent.ConcurrentHashMap<$_, $_>
+                        - java.util.concurrent.ConcurrentSkipListMap
+                        - java.util.concurrent.ConcurrentSkipListMap<$_, $_>
+                        - java.util.concurrent.ConcurrentNavigableMap
+                        - java.util.concurrent.ConcurrentNavigableMap<$_, $_>
+                        - java.util.Properties
+                        - java.util.Properties<$_, $_>
+        to: $TO
+      - from: $INPUT
+        patterns:
+          - pattern-either:
+              - pattern: String.format($FMT, ..., $INPUT, ...)
+              - pattern: MessageFormat.format($FMT, ..., $INPUT, ...)
+        to: $FMT
+      - from: $FROM
+        patterns:
+          - pattern-either:
+              - pattern: (StringBuilder $TO).append($FROM, ...)
+              - pattern: (StringBuilder $TO).insert($OFFSET, $FROM, ...)
+              - pattern: (StringBuilder $TO).replace($START, $END, $FROM, ...)
+              - pattern: (StringBuffer $TO).append($FROM, ...)
+              - pattern: (StringBuffer $TO).insert($OFFSET, $FROM, ...)
+        to: $TO
+      - from: $F
+        patterns:
+          - pattern: $X = (java.io.File $F).$ANY(...)
+        to: $X
+    pattern-sinks:
+      - patterns:
+          - focus-metavariable: $FILE
+          - pattern-either:
+              - pattern: (java.io.File $FILE).toPath(...)
+              - pattern: (java.io.File $FILE).getPath(...)
+              - pattern: (java.io.File $FILE).getName(...)
+              - pattern: (java.io.File $FILE).getParent(...)
+              - pattern: (java.io.File $FILE).getParentFile(...)
+              - pattern: (java.io.File $FILE).list(...)
+              - pattern: (java.io.File $FILE).listFiles(...)
+              - pattern: (java.io.File $FILE).toURI(...)
+              - pattern: (java.io.File $FILE).getAbsoluteFile(...)
+              - pattern: (java.io.File $FILE).getAbsolutePath(...)
+              - pattern: (java.io.File $FILE).getCanonicalFile(...)
+              - pattern: (java.io.File $FILE).getCanonicalPath(...)
+              - pattern: (java.io.FileReader $FILE).read(...)
+              - pattern: (java.io.FileReader $FILE).transferTo(...)
+              - pattern: (java.io.FileInputStream $FILE).read(...)
+              - pattern: (java.io.FileInputStream $FILE).readAllBytes(...)
+              - pattern: (java.io.FileInputStream $FILE).readNBytes(...)
+              - pattern: (java.io.FileInputStream $FILE).transferTo(...)
+              - pattern: (java.io.FileOutputStream $FILE).write(...)
+              - pattern: (javax.xml.transform.stream.StreamSource $FILE).getInputStream(...)
+              - pattern: (javax.xml.transform.stream.StreamSource $FILE).getReader(...)
+              - pattern: (javax.xml.transform.TransformerFactory $T).newTransformer($FILE,...)
+              - pattern: javax.xml.transform.TransformerFactory.newInstance(...). ... .newTransformer($FILE,...)
+        requires: FILE
+    pattern-sanitizers:
+      - pattern: (ChoiceFormat $X).format(...)
+      - pattern: (DecimalFormat $X).format(...)
+      - pattern: (java.util.UUID $X)
+      - pattern: org.apache.commons.io.FilenameUtils.getName(...)
+      - pattern: |
+          if (<... $FN.startsWith(...) ...>)
+          {
+            ...
+          }
+          ...
+      - pattern: |
+          if (<... $FN.contains(...) ...>)
+          {
+            ...
+          }
+          ...

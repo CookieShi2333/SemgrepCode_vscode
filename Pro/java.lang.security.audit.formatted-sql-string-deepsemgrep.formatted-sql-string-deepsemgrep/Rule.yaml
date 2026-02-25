@@ -1,0 +1,110 @@
+rules:
+  - id: formatted-sql-string-deepsemgrep
+    message: Untrusted input might be used to build a database query, which can lead to a SQL injection vulnerability. An attacker can execute malicious SQL statements and gain unauthorized access to sensitive data, modify, delete data, or execute arbitrary system commands. To prevent this vulnerability, use prepared statements that do not concatenate user-controllable strings and use parameterized queries where SQL commands and user data are strictly separated. Also, consider using an object-relational (ORM) framework to operate with safer abstractions. To build SQL queries safely in Java, it is possible to adopt prepared statements by using the `java.sql.PreparedStatement` class with bind variables.
+    severity: CRITICAL
+    metadata:
+      likelihood: HIGH
+      impact: HIGH
+      confidence: MEDIUM
+      interfile: true
+      category: security
+      subcategory:
+        - audit
+      asvs:
+        section: 'V5: Validation, Sanitization and Encoding Verification Requirements'
+        control_id: 5.3.5 Injection
+        control_url: https://github.com/OWASP/ASVS/blob/master/4.0/en/0x13-V5-Validation-Sanitization-Encoding.md#v53-output-encoding-and-injection-prevention-requirements
+        version: '4'
+      cwe:
+        - "CWE-89: Improper Neutralization of Special Elements used in an SQL Command ('SQL Injection')"
+      functional-categories:
+        - web::source::cookie::Servlet
+        - web::source::http-params::Servlet
+        - web::source::http-body::Servlet
+        - web::source::header::Servlet
+        - web::source::url-path-params::Servlet
+        - web::source::cookie::Spring
+        - web::source::http-params::Spring
+        - web::source::http-body::Spring
+        - web::source::header::Spring
+        - web::source::url-path-params::Spring
+        - db::sink::sql-or-nosql-query::JPA
+        - db::sink::sql-or-nosql-query::java.sql
+      owasp:
+        - A01:2017 - Injection
+        - A03:2021 - Injection
+        - A05:2025 - Injection
+      references:
+        - https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html
+        - https://docs.oracle.com/javase/tutorial/jdbc/basics/prepared.html#create_ps
+        - https://software-security.sans.org/developer-how-to/fix-sql-injection-in-java-using-prepared-callable-statement
+      source-rule-url: https://find-sec-bugs.github.io/bugs.htm#SQL_INJECTION
+      technology:
+        - java
+      license: Semgrep Rules License v1.0. For more details, visit semgrep.dev/legal/rules-license
+      vulnerability_class:
+        - SQL Injection
+    languages:
+      - java
+    mode: taint
+    min-version: 1.71.0
+    options:
+      taint_assume_safe_numbers: true
+      taint_assume_safe_booleans: true
+    pattern-sources:
+      - patterns:
+          - pattern-either:
+              - pattern: (HttpServletRequest $REQ)
+              - pattern: (ServletRequest $REQ)
+              - patterns:
+                  - pattern-either:
+                      - pattern-inside: |
+                          $METHODNAME(..., @$REQ(...) $TYPE $SOURCE,...) {
+                            ...
+                          }
+                      - pattern-inside: |
+                          $METHODNAME(..., @$REQ $TYPE $SOURCE,...) {
+                            ...
+                          }
+                  - metavariable-regex:
+                      metavariable: $TYPE
+                      regex: ^(?!(Integer|Long|Float|Double|Char|Boolean|int|long|float|double|char|boolean))
+                  - metavariable-regex:
+                      metavariable: $REQ
+                      regex: (RequestBody|PathVariable|RequestParam|RequestHeader|CookieValue|ModelAttribute)
+                  - focus-metavariable: $SOURCE
+              - patterns:
+                  - pattern-either:
+                      - pattern-inside: |
+                          @ResponseBody
+                          $RET $METHODNAME($TYPE $SOURCE) {
+                            ...
+                          }
+                  - metavariable-regex:
+                      metavariable: $TYPE
+                      regex: ^(?!(Integer|Long|Float|Double|Char|Boolean|int|long|float|double|char|boolean))
+                  - focus-metavariable: $SOURCE
+    pattern-sinks:
+      - pattern-either:
+          - patterns:
+              - pattern-not: $S.$SQLFUNC(<... "=~/.*TABLE *$/" ...>)
+              - pattern-not: $S.$SQLFUNC(<... "=~/.*TABLE %s$/" ...>)
+              - pattern-either:
+                  - pattern: (Statement $S).$SQLFUNC(...)
+                  - pattern: (Connection $C).createStatement(...).$SQLFUNC(...)
+                  - pattern: (EntityManager $EM).$SQLFUNC(...)
+              - metavariable-regex:
+                  metavariable: $SQLFUNC
+                  regex: execute|executeQuery|createQuery|query
+          - patterns:
+              - pattern-either:
+                  - pattern: (Connection $C).prepareCall($SQL)
+                  - pattern: (Connection $C).prepareStatement($SQL)
+              - focus-metavariable: $SQL
+          - patterns:
+              - pattern-either:
+                  - pattern: (Connection $C).prepareCall($SQL, ...)
+                  - pattern: (Connection $C).prepareStatement($SQL, ...)
+              - focus-metavariable: $SQL
+    pattern-sanitizers:
+      - pattern: (boolean $X)

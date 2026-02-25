@@ -1,0 +1,38 @@
+rules:
+  - id: cookie-missing-secure-flag
+    message: A cookie was detected without setting the 'secure' flag. The 'secure' flag for cookies prevents the client from transmitting the cookie over insecure channels such as HTTP. Set the 'secure' flag by calling '$COOKIE.setSecure(true);'
+    severity: WARNING
+    metadata:
+      likelihood: LOW
+      impact: LOW
+      confidence: HIGH
+      category: security
+      subcategory:
+        - audit
+      asvs:
+        section: 'V3: Session Management Verification Requirements'
+        control_id: 3.4.1 Missing Cookie Attribute
+        control_url: https://github.com/OWASP/ASVS/blob/master/4.0/en/0x12-V3-Session-management.md#v34-cookie-based-session-management
+        version: '4'
+      cwe:
+        - "CWE-614: Sensitive Cookie in HTTPS Session Without 'Secure' Attribute"
+      functional-categories:
+        - web::search::cookie-config::Servlet
+      owasp:
+        - A05:2021 - Security Misconfiguration
+        - A02:2025 - Security Misconfiguration
+      references:
+        - https://owasp.org/www-community/controls/SecureCookieAttribute
+      source-rule-url: https://find-sec-bugs.github.io/bugs.htm#INSECURE_COOKIE
+      technology:
+        - java
+        - servlets
+      license: Semgrep Rules License v1.0. For more details, visit semgrep.dev/legal/rules-license
+      vulnerability_class:
+        - Cookie Security
+    languages:
+      - java
+    patterns:
+      - pattern-not-inside: $COOKIE.setValue(""); ...
+      - pattern-not-inside: $COOKIE.setSecure(...); ...
+      - pattern: $RESPONSE.addCookie($COOKIE);

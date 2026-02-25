@@ -1,0 +1,99 @@
+rules:
+  - id: tainted-cmd-from-http-request
+    message: Untrusted input might be injected into a command executed by the application, which can lead to a command injection vulnerability. An attacker can execute arbitrary commands, potentially gaining complete control of the system. To prevent command injection, avoid executing OS commands with user input. If this is unavoidable, validate and sanitize the user input, and use safe methods for executing the commands. For more information, see [Java command injection prevention](https:// semgrep.dev/docs/cheat-sheets/java-command-injection/)
+    severity: CRITICAL
+    metadata:
+      likelihood: HIGH
+      impact: HIGH
+      confidence: MEDIUM
+      category: security
+      subcategory:
+        - vuln
+      cwe:
+        - "CWE-78: Improper Neutralization of Special Elements used in an OS Command ('OS Command Injection')"
+      cwe2021-top25: true
+      cwe2022-top25: true
+      functional-categories:
+        - web::source::cookie::Servlet
+        - web::source::http-params::Servlet
+        - web::source::http-body::Servlet
+        - web::source::header::Servlet
+        - web::source::session-properties::Servlet
+        - web::source::url-path-params::Servlet
+        - web::source::form-data::Servlet
+        - os::sink::os-command-or-thread::lang
+      owasp:
+        - A01:2017 - Injection
+        - A03:2021 - Injection
+        - A05:2025 - Injection
+      references:
+        - https://owasp.org/www-community/attacks/Command_Injection
+        - https://cheatsheetseries.owasp.org/cheatsheets/OS_Command_Injection_Defense_Cheat_Sheet.html
+        - https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/07-Input_Validation_Testing/12-Testing_for_Command_Injection
+        - https://www.securecodewarrior.com/blog/coders-conquer-security-share-learn-series-os-command-injection
+        - https://portal.securecodewarrior.com/#/learning-resources/application_security_weaknesses~2Fweb~2Fdata_handling~2Finjection~2Foscmd
+      technology:
+        - java
+        - servlets
+      license: Semgrep Rules License v1.0. For more details, visit semgrep.dev/legal/rules-license
+      vulnerability_class:
+        - Command Injection
+    languages:
+      - java
+    mode: taint
+    pattern-sources:
+      - patterns:
+          - pattern-either:
+              - pattern: (HttpServletRequest $REQ).$REQFUNC(...)
+              - pattern: (ServletRequest $REQ).$REQFUNC(...)
+              - patterns:
+                  - pattern-inside: |
+                      (javax.servlet.http.Cookie[] $COOKIES) = (HttpServletRequest $REQ).getCookies(...);
+                      ...
+                      for (javax.servlet.http.Cookie $COOKIE: $COOKIES) {
+                        ...
+                      }
+                  - pattern: $COOKIE.getValue(...)
+              - patterns:
+                  - pattern-inside: |
+                      $TYPE[] $VALS = (HttpServletRequest $REQ).$GETFUNC(...);
+                      ...
+                  - pattern: $PARAM = $VALS[$INDEX];
+          - pattern-not: $REQ.getUserPrincipal()
+          - pattern-not: $REQ.getSession(...)
+          - pattern-not: $REQ.getAuthType(...)
+          - pattern-not: $REQ.getMethod(...)
+          - pattern-not: $REQ.getLocales(...)
+          - pattern-not: $REQ.getLocale(...)
+          - pattern-not: $REQ.isUserinRole(...)
+          - pattern-not: $REQ.isRequestdSessionIdValid(...)
+          - pattern-not: $REQ.isRequestedSessionIdFromUrl(...)
+          - pattern-not: $REQ.getIntHeader(...)
+          - pattern-not: $REQ.getDateHeader(...)
+          - pattern-not: $REQ.authenticate(...)
+          - pattern-not: $REQ.isUserInRole(...)
+          - pattern-not: $REQ.getAttribute(...)
+          - pattern-not: $REQ.getAttributeNames(...)
+          - pattern-not: $REQ.getAuthType(...)
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: (ProcessBuilder $PB) = ...;
+              - pattern: (Process $P) = ...;
+              - patterns:
+                  - pattern-either:
+                      - pattern-inside: |
+                          (java.util.List<$TYPE> $ARGLIST) = ...;  
+                          ...
+                          (ProcessBuilder $PB) = ...;
+                          ...
+                          $PB.command($ARGLIST);
+                      - pattern-inside: |
+                          (java.util.List<$TYPE> $ARGLIST) = ...;  
+                          ...
+                          (ProcessBuilder $PB) = ...;
+                      - pattern-inside: |
+                          (java.util.List<$TYPE> $ARGLIST) = ...;  
+                          ...
+                          (Process $P) = ...;
+                  - pattern: $ARGLIST.add(...);

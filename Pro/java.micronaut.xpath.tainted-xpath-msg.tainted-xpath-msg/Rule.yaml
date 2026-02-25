@@ -1,0 +1,241 @@
+rules:
+  - id: tainted-xpath-msg
+    message: XPath queries are constructed dynamically on user-controlled input. This could lead to XPath injection if variables passed into the evaluate or compile commands are not properly sanitized. Xpath injection could lead to unauthorized access to sensitive information in XML documents. Thoroughly sanitize user input or use parameterized XPath queries if you can.
+    severity: WARNING
+    metadata:
+      likelihood: MEDIUM
+      impact: MEDIUM
+      confidence: MEDIUM
+      category: security
+      subcategory:
+        - vuln
+      cwe:
+        - "CWE-643: Improper Neutralization of Data within XPath Expressions ('XPath Injection')"
+      display-name: XPath Injection with Micronaut
+      functional-categories:
+        - pubsub::source::message::Micronaut
+        - xml::sink::xpath::javax.xml
+      owasp:
+        - A03:2021 - Injection
+        - A05:2025 - Injection
+      references:
+        - https://owasp.org/Top10/2025/A05_2025-Injection/
+        - https://owasp.org/Top10/A03_2021-Injection
+      technology:
+        - Kafka
+        - Micronaut
+        - RabbitMQ
+        - java
+      license: Semgrep Rules License v1.0. For more details, visit semgrep.dev/legal/rules-license
+      vulnerability_class:
+        - XPath Injection
+    languages:
+      - java
+    mode: taint
+    options:
+      interfile: true
+      taint_assume_safe_booleans: true
+      taint_assume_safe_numbers: true
+    pattern-sources:
+      - patterns:
+          - focus-metavariable: $INPUT
+          - pattern: |
+              @io.micronaut.configuration.kafka.annotation.Topic(...)
+              $TYPE $NAME(..., $I $INPUT, ...) {...}
+          - pattern-inside: |
+              @io.micronaut.configuration.kafka.annotation.KafkaListener(...)
+              class $CL {...}
+      - patterns:
+          - focus-metavariable: $INPUT
+          - pattern: |
+              @io.micronaut.rabbitmq.annotation.Queue(...)
+              $TYPE $NAME(..., $I $INPUT, ...) {...}
+          - pattern-inside: |
+              @io.micronaut.rabbitmq.annotation.RabbitListener(...)
+              class $CL {...}
+    pattern-propagators:
+      - from: $FROM
+        patterns:
+          - pattern-either:
+              - patterns:
+                  - pattern-either:
+                      - pattern: $TO.add($FROM)
+                      - pattern: $TO.add($X, $FROM)
+                      - pattern: $TO.addAll($FROM)
+                      - pattern: $TO.addAll($X, $FROM)
+                      - pattern: $TO.addFirst(..., $FROM, ...)
+                      - pattern: $TO.addLast(..., $FROM, ...)
+                      - pattern: $TO.addAllAbsent(..., $FROM, ...)
+                      - pattern: $TO.addIfAbsent(..., $FROM, ...)
+                      - pattern: $TO.addElement(..., $FROM, ...)
+                      - pattern: $TO.set($X, $FROM)
+                      - pattern: $TO.push(..., $FROM, ...)
+                      - pattern: $TO.setElementAt(..., $FROM, ...)
+                      - pattern: $TO.replaceAll(..., $FROM, ...)
+                      - pattern: $TO.insertElementAt($FROM, ...)
+                  - metavariable-type:
+                      metavariable: $TO
+                      types:
+                        - java.util.List
+                        - java.util.List<$_>
+                        - java.util.Stack
+                        - java.util.Stack<$_>
+                        - java.util.Vector
+                        - java.util.Vector<$_>
+                        - java.util.ArrayList
+                        - java.util.ArrayList<$_>
+                        - java.util.LinkedList
+                        - java.util.LinkedList<$_>
+                        - java.util.AbstractList
+                        - java.util.AbstractList<$_>
+                        - java.util.AbstractSequentialList
+                        - java.util.AbstractSequentialList<$_>
+                        - java.util.concurrent.CopyOnWriteArrayList
+                        - java.util.concurrent.CopyOnWriteArrayList<$_>
+              - patterns:
+                  - pattern-either:
+                      - pattern: $TO.add(..., $FROM, ...)
+                      - pattern: $TO.addFirst(..., $FROM, ...)
+                      - pattern: $TO.addLast(..., $FROM, ...)
+                      - pattern: $TO.addAll(..., $FROM, ...)
+                      - pattern: $TO.put(..., $FROM, ...)
+                      - pattern: $TO.putLast(..., $FROM, ...)
+                      - pattern: $TO.putFirst(..., $FROM, ...)
+                      - pattern: $TO.push(..., $FROM, ...)
+                      - pattern: $TO.offer($FROM, ...)
+                      - pattern: $TO.offerLast($FROM, ...)
+                      - pattern: $TO.offerFirst($FROM, ...)
+                  - metavariable-type:
+                      metavariable: $TO
+                      types:
+                        - java.util.Queue
+                        - java.util.Queue<$_>
+                        - java.util.Deque
+                        - java.util.Deque<$_>
+                        - java.util.ArrayDeque
+                        - java.util.ArrayDeque<$_>
+                        - java.util.AbstractQueue
+                        - java.util.AbstractQueue<$_>
+                        - java.util.concurrent.DelayQueue
+                        - java.util.concurrent.DelayQueue<$_>
+                        - java.util.concurrent.BlockingQueue
+                        - java.util.concurrent.BlockingQueue<$_>
+                        - java.util.concurrent.TransferQueue
+                        - java.util.concurrent.TransferQueue<$_>
+                        - java.util.concurrent.BlockingDeque
+                        - java.util.concurrent.BlockingDeque<$_>
+                        - java.util.concurrent.SynchronousQueue
+                        - java.util.concurrent.SynchronousQueue<$_>
+                        - java.util.concurrent.LinkedTransferQueue
+                        - java.util.concurrent.LinkedTransferQueue<$_>
+                        - java.util.concurrent.ArrayBlockingQueue
+                        - java.util.concurrent.ArrayBlockingQueue<$_>
+                        - java.util.concurrent.LinkedBlockingDeque
+                        - java.util.concurrent.LinkedBlockingDeque<$_>
+                        - java.util.concurrent.LinkedBlockingQueue
+                        - java.util.concurrent.LinkedBlockingQueue<$_>
+                        - java.util.concurrent.PriorityBlockingQueue
+                        - java.util.concurrent.PriorityBlockingQueue<$_>
+                        - java.util.concurrent.ConcurrentLinkedDeque
+                        - java.util.concurrent.ConcurrentLinkedDeque<$_>
+              - patterns:
+                  - pattern-either:
+                      - pattern: $TO.add(..., $FROM, ...)
+                      - pattern: $TO.addAll(..., $FROM, ...)
+                  - metavariable-type:
+                      metavariable: $TO
+                      types:
+                        - java.util.Set
+                        - java.util.Set<$_>
+                        - java.util.TreeSet
+                        - java.util.TreeSet<$_>
+                        - java.util.EnumSet
+                        - java.util.EnumSet<$_>
+                        - java.util.HashSet
+                        - java.util.HashSet<$_>
+                        - java.util.SortedSet
+                        - java.util.SortedSet<$_>
+                        - java.util.AbstractSet
+                        - java.util.AbstractSet<$_>
+                        - java.util.NavigableSet
+                        - java.util.NavigableSet<$_>
+                        - java.util.LinkedHashSet
+                        - java.util.LinkedHashSet<$_>
+                        - java.util.AbstractCollection
+                        - java.util.AbstractCollection<$_>
+                        - java.util.concurrent.CopyOnWriteArraySet
+                        - java.util.concurrent.CopyOnWriteArraySet<$_>
+                        - java.util.concurrent.ConcurrentSkipListSet
+                        - java.util.concurrent.ConcurrentSkipListSet<$_>
+                        - java.util.concurrent.ConcurrentHashMap.KeySetView
+                        - java.util.concurrent.ConcurrentHashMap.KeySetView<$_>
+              - patterns:
+                  - pattern-either:
+                      - pattern: $TO.merge(..., $FROM, ...)
+                      - pattern: $TO.put(..., $FROM, ...)
+                      - pattern: $TO.putAll(..., $FROM, ...)
+                      - pattern: $TO.putIfAbsent(..., $FROM, ...)
+                      - pattern: $TO.replace($X, ..., $FROM, ...)
+                      - pattern: $TO.replaceAll(..., $FROM, ...)
+                  - metavariable-type:
+                      metavariable: $TO
+                      types:
+                        - java.util.Map
+                        - java.util.Map<$_, $_>
+                        - java.util.NavigableMap
+                        - java.util.NavigableMap<$_, $_>
+                        - java.util.SortedMap
+                        - java.util.SortedMap<$_, $_>
+                        - java.util.TreeMap
+                        - java.util.TreeMap<$_, $_>
+                        - java.util.AbstractMap
+                        - java.util.AbstractMap<$_, $_>
+                        - java.util.EnumMap
+                        - java.util.EnumMap<$_, $_>
+                        - java.util.HashMap
+                        - java.util.HashMap<$_, $_>
+                        - java.util.Hashtable
+                        - java.util.Hashtable<$_, $_>
+                        - java.util.IdentityHashMap
+                        - java.util.IdentityHashMap<$_, $_>
+                        - java.util.LinkedHashMap
+                        - java.util.LinkedHashMap<$_, $_>
+                        - java.util.WeakHashMap
+                        - java.util.WeakHashMap<$_, $_>
+                        - java.util.concurrent.ConcurrentMap
+                        - java.util.concurrent.ConcurrentMap<$_, $_>
+                        - java.util.concurrent.ConcurrentHashMap
+                        - java.util.concurrent.ConcurrentHashMap<$_, $_>
+                        - java.util.concurrent.ConcurrentSkipListMap
+                        - java.util.concurrent.ConcurrentSkipListMap<$_, $_>
+                        - java.util.concurrent.ConcurrentNavigableMap
+                        - java.util.concurrent.ConcurrentNavigableMap<$_, $_>
+                        - java.util.Properties
+                        - java.util.Properties<$_, $_>
+        to: $TO
+      - from: $INPUT
+        patterns:
+          - pattern-either:
+              - pattern: String.format($FMT, ..., $INPUT, ...)
+              - pattern: MessageFormat.format($FMT, ..., $INPUT, ...)
+        to: $FMT
+      - from: $FROM
+        patterns:
+          - pattern-either:
+              - pattern: (StringBuilder $TO).append($FROM, ...)
+              - pattern: (StringBuilder $TO).insert($OFFSET, $FROM, ...)
+              - pattern: (StringBuilder $TO).replace($START, $END, $FROM, ...)
+              - pattern: (StringBuffer $TO).append($FROM, ...)
+              - pattern: (StringBuffer $TO).insert($OFFSET, $FROM, ...)
+        to: $TO
+    pattern-sinks:
+      - patterns:
+          - focus-metavariable: $EXPR
+          - pattern-either:
+              - pattern: (javax.xml.xpath.XPath $XP).evaluate($EXPR, ...)
+              - pattern: (javax.xml.xpath.XPath $XP).evaluateExpression($EXPR, ...)
+              - pattern: (javax.xml.xpath.XPath $XP).compile($EXPR, ...)
+    pattern-sanitizers:
+      - pattern: (ChoiceFormat $X).format(...)
+      - pattern: (DecimalFormat $X).format(...)
+      - pattern: (java.util.UUID $X)

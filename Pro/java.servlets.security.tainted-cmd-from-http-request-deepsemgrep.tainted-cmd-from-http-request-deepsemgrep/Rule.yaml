@@ -1,0 +1,255 @@
+rules:
+  - id: tainted-cmd-from-http-request-deepsemgrep
+    message: 'Untrusted input might be injected into a command executed by the application, which can lead to a command injection vulnerability. An attacker can execute arbitrary commands, potentially gaining complete control of the system. To prevent this vulnerability, avoid executing OS commands with user input. If this is unavoidable, validate and sanitize the input, and use safe methods for executing the commands. For more information, see: [Java command injection prevention] (https://semgrep.dev/docs/cheat-sheets/java-command-injection/)'
+    severity: ERROR
+    metadata:
+      likelihood: MEDIUM
+      impact: HIGH
+      confidence: HIGH
+      category: security
+      subcategory:
+        - vuln
+      cwe:
+        - "CWE-78: Improper Neutralization of Special Elements used in an OS Command ('OS Command Injection')"
+      cwe2020-top25: true
+      cwe2021-top25: true
+      cwe2022-top25: true
+      display-name: OS Command Injection with Servlets
+      functional-categories:
+        - os::sink::command
+        - web::source::cookie::Servlet
+        - web::source::header::Servlet
+        - web::source::http-body::Servlet
+        - web::source::url-path-params::Servlet
+        - web::source::url-query-string::Servlet
+      owasp:
+        - A01:2017 - Injection
+        - A03:2021 - Injection
+        - A05:2025 - Injection
+      references:
+        - https://owasp.org/Top10/2025/A05_2025-Injection/
+        - https://owasp.org/Top10/A03_2021-Injection
+      technology:
+        - java
+        - servlets
+      license: Semgrep Rules License v1.0. For more details, visit semgrep.dev/legal/rules-license
+      vulnerability_class:
+        - Command Injection
+    languages:
+      - java
+    mode: taint
+    options:
+      interfile: true
+      taint_assume_safe_booleans: true
+      taint_assume_safe_numbers: true
+    pattern-sources:
+      - patterns:
+          - pattern-either:
+              - pattern: (ServletRequest $REQ).$METHOD(...)
+              - pattern: (HttpServletRequest $REQ).$METHOD(...)
+          - metavariable-regex:
+              metavariable: $METHOD
+              regex: (getInputStream|getParameter|getParameterMap|getParameterValues|getReader|getCookies|getHeader|getHeaderNames|getHeaders|getPart|getParts|getQueryString|getPathInfo)
+    pattern-propagators:
+      - from: $FROM
+        patterns:
+          - pattern-either:
+              - patterns:
+                  - pattern-either:
+                      - pattern: $TO.add($FROM)
+                      - pattern: $TO.add($X, $FROM)
+                      - pattern: $TO.addAll($FROM)
+                      - pattern: $TO.addAll($X, $FROM)
+                      - pattern: $TO.addFirst(..., $FROM, ...)
+                      - pattern: $TO.addLast(..., $FROM, ...)
+                      - pattern: $TO.addAllAbsent(..., $FROM, ...)
+                      - pattern: $TO.addIfAbsent(..., $FROM, ...)
+                      - pattern: $TO.addElement(..., $FROM, ...)
+                      - pattern: $TO.set($X, $FROM)
+                      - pattern: $TO.push(..., $FROM, ...)
+                      - pattern: $TO.setElementAt(..., $FROM, ...)
+                      - pattern: $TO.replaceAll(..., $FROM, ...)
+                      - pattern: $TO.insertElementAt($FROM, ...)
+                  - metavariable-type:
+                      metavariable: $TO
+                      types:
+                        - java.util.List
+                        - java.util.List<$_>
+                        - java.util.Stack
+                        - java.util.Stack<$_>
+                        - java.util.Vector
+                        - java.util.Vector<$_>
+                        - java.util.ArrayList
+                        - java.util.ArrayList<$_>
+                        - java.util.LinkedList
+                        - java.util.LinkedList<$_>
+                        - java.util.AbstractList
+                        - java.util.AbstractList<$_>
+                        - java.util.AbstractSequentialList
+                        - java.util.AbstractSequentialList<$_>
+                        - java.util.concurrent.CopyOnWriteArrayList
+                        - java.util.concurrent.CopyOnWriteArrayList<$_>
+              - patterns:
+                  - pattern-either:
+                      - pattern: $TO.add(..., $FROM, ...)
+                      - pattern: $TO.addFirst(..., $FROM, ...)
+                      - pattern: $TO.addLast(..., $FROM, ...)
+                      - pattern: $TO.addAll(..., $FROM, ...)
+                      - pattern: $TO.put(..., $FROM, ...)
+                      - pattern: $TO.putLast(..., $FROM, ...)
+                      - pattern: $TO.putFirst(..., $FROM, ...)
+                      - pattern: $TO.push(..., $FROM, ...)
+                      - pattern: $TO.offer($FROM, ...)
+                      - pattern: $TO.offerLast($FROM, ...)
+                      - pattern: $TO.offerFirst($FROM, ...)
+                  - metavariable-type:
+                      metavariable: $TO
+                      types:
+                        - java.util.Queue
+                        - java.util.Queue<$_>
+                        - java.util.Deque
+                        - java.util.Deque<$_>
+                        - java.util.ArrayDeque
+                        - java.util.ArrayDeque<$_>
+                        - java.util.AbstractQueue
+                        - java.util.AbstractQueue<$_>
+                        - java.util.concurrent.DelayQueue
+                        - java.util.concurrent.DelayQueue<$_>
+                        - java.util.concurrent.BlockingQueue
+                        - java.util.concurrent.BlockingQueue<$_>
+                        - java.util.concurrent.TransferQueue
+                        - java.util.concurrent.TransferQueue<$_>
+                        - java.util.concurrent.BlockingDeque
+                        - java.util.concurrent.BlockingDeque<$_>
+                        - java.util.concurrent.SynchronousQueue
+                        - java.util.concurrent.SynchronousQueue<$_>
+                        - java.util.concurrent.LinkedTransferQueue
+                        - java.util.concurrent.LinkedTransferQueue<$_>
+                        - java.util.concurrent.ArrayBlockingQueue
+                        - java.util.concurrent.ArrayBlockingQueue<$_>
+                        - java.util.concurrent.LinkedBlockingDeque
+                        - java.util.concurrent.LinkedBlockingDeque<$_>
+                        - java.util.concurrent.LinkedBlockingQueue
+                        - java.util.concurrent.LinkedBlockingQueue<$_>
+                        - java.util.concurrent.PriorityBlockingQueue
+                        - java.util.concurrent.PriorityBlockingQueue<$_>
+                        - java.util.concurrent.ConcurrentLinkedDeque
+                        - java.util.concurrent.ConcurrentLinkedDeque<$_>
+              - patterns:
+                  - pattern-either:
+                      - pattern: $TO.add(..., $FROM, ...)
+                      - pattern: $TO.addAll(..., $FROM, ...)
+                  - metavariable-type:
+                      metavariable: $TO
+                      types:
+                        - java.util.Set
+                        - java.util.Set<$_>
+                        - java.util.TreeSet
+                        - java.util.TreeSet<$_>
+                        - java.util.EnumSet
+                        - java.util.EnumSet<$_>
+                        - java.util.HashSet
+                        - java.util.HashSet<$_>
+                        - java.util.SortedSet
+                        - java.util.SortedSet<$_>
+                        - java.util.AbstractSet
+                        - java.util.AbstractSet<$_>
+                        - java.util.NavigableSet
+                        - java.util.NavigableSet<$_>
+                        - java.util.LinkedHashSet
+                        - java.util.LinkedHashSet<$_>
+                        - java.util.AbstractCollection
+                        - java.util.AbstractCollection<$_>
+                        - java.util.concurrent.CopyOnWriteArraySet
+                        - java.util.concurrent.CopyOnWriteArraySet<$_>
+                        - java.util.concurrent.ConcurrentSkipListSet
+                        - java.util.concurrent.ConcurrentSkipListSet<$_>
+                        - java.util.concurrent.ConcurrentHashMap.KeySetView
+                        - java.util.concurrent.ConcurrentHashMap.KeySetView<$_>
+              - patterns:
+                  - pattern-either:
+                      - pattern: $TO.merge(..., $FROM, ...)
+                      - pattern: $TO.put(..., $FROM, ...)
+                      - pattern: $TO.putAll(..., $FROM, ...)
+                      - pattern: $TO.putIfAbsent(..., $FROM, ...)
+                      - pattern: $TO.replace($X, ..., $FROM, ...)
+                      - pattern: $TO.replaceAll(..., $FROM, ...)
+                  - metavariable-type:
+                      metavariable: $TO
+                      types:
+                        - java.util.Map
+                        - java.util.Map<$_, $_>
+                        - java.util.NavigableMap
+                        - java.util.NavigableMap<$_, $_>
+                        - java.util.SortedMap
+                        - java.util.SortedMap<$_, $_>
+                        - java.util.TreeMap
+                        - java.util.TreeMap<$_, $_>
+                        - java.util.AbstractMap
+                        - java.util.AbstractMap<$_, $_>
+                        - java.util.EnumMap
+                        - java.util.EnumMap<$_, $_>
+                        - java.util.HashMap
+                        - java.util.HashMap<$_, $_>
+                        - java.util.Hashtable
+                        - java.util.Hashtable<$_, $_>
+                        - java.util.IdentityHashMap
+                        - java.util.IdentityHashMap<$_, $_>
+                        - java.util.LinkedHashMap
+                        - java.util.LinkedHashMap<$_, $_>
+                        - java.util.WeakHashMap
+                        - java.util.WeakHashMap<$_, $_>
+                        - java.util.concurrent.ConcurrentMap
+                        - java.util.concurrent.ConcurrentMap<$_, $_>
+                        - java.util.concurrent.ConcurrentHashMap
+                        - java.util.concurrent.ConcurrentHashMap<$_, $_>
+                        - java.util.concurrent.ConcurrentSkipListMap
+                        - java.util.concurrent.ConcurrentSkipListMap<$_, $_>
+                        - java.util.concurrent.ConcurrentNavigableMap
+                        - java.util.concurrent.ConcurrentNavigableMap<$_, $_>
+                        - java.util.Properties
+                        - java.util.Properties<$_, $_>
+        to: $TO
+      - from: $INPUT
+        patterns:
+          - pattern-either:
+              - pattern: String.format($FMT, ..., $INPUT, ...)
+              - pattern: MessageFormat.format($FMT, ..., $INPUT, ...)
+        to: $FMT
+      - from: $FROM
+        patterns:
+          - pattern-either:
+              - pattern: (StringBuilder $TO).append($FROM, ...)
+              - pattern: (StringBuilder $TO).insert($OFFSET, $FROM, ...)
+              - pattern: (StringBuilder $TO).replace($START, $END, $FROM, ...)
+              - pattern: (StringBuffer $TO).append($FROM, ...)
+              - pattern: (StringBuffer $TO).insert($OFFSET, $FROM, ...)
+        to: $TO
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: Runtime.getRuntime(...).$EXEC($CMD,...)
+              - pattern: (Runtime $R).$EXEC($CMD,...)
+          - metavariable-regex:
+              metavariable: $EXEC
+              regex: (exec|loadLibrary|load)
+          - focus-metavariable: $CMD
+      - patterns:
+          - pattern-either:
+              - pattern: new ProcessBuilder($CMD,...)
+              - pattern: new ProcessBuilder(...). ... .command($CMD,...)
+              - pattern: (ProcessBuilder $P). ... .command($CMD,...)
+          - focus-metavariable: $CMD
+      - patterns:
+          - pattern-either:
+              - pattern: new ProcessBuilder($SH, "-c", $CMD,...)
+              - pattern: new ProcessBuilder(...). ... .command($SH, "-c", $CMD,...)
+              - pattern: (ProcessBuilder $P). ... .command($SH, "-c", $CMD,...)
+          - metavariable-regex:
+              metavariable: $SH
+              regex: .*\/?(bash|csh|dash|fish|ksh|tcsh|sh|zsh)\"?$
+          - focus-metavariable: $CMD
+    pattern-sanitizers:
+      - pattern: (ChoiceFormat $X).format(...)
+      - pattern: (DecimalFormat $X).format(...)
+      - pattern: (java.util.UUID $X)

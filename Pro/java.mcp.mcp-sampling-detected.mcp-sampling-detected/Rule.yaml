@@ -1,0 +1,49 @@
+rules:
+  - id: mcp-sampling-detected
+    message: |
+      Detected MCP sampling request using 'sampling/createMessage'. MCP sampling allows
+      servers to request the client to generate LLM responses on their behalf. This capability
+      should be carefully reviewed for security implications:
+
+      - Sampling requests can expose sensitive data in prompts to the LLM
+      - The server is asking the client to make LLM API calls, which may have cost implications
+      - Prompts may contain data from untrusted sources (tool parameters, resources)
+      - The LLM response is returned to the server and may influence subsequent actions
+
+      Best practices:
+      1. Sanitize and validate all data before including it in sampling prompts
+      2. Use system prompts to constrain LLM behavior and output format
+      3. Avoid including sensitive user data, credentials, or PII in prompts
+      4. Document that your server uses sampling and its purpose
+      5. Consider rate limiting or requiring user consent for sampling operations
+      6. Review the maxTokens parameter to avoid excessive costs
+    severity: INFO
+    metadata:
+      likelihood: LOW
+      impact: LOW
+      confidence: HIGH
+      category: security
+      subcategory:
+        - audit
+      cwe:
+        - "CWE-200: Exposure of Sensitive Information to an Unauthorized Actor"
+      cwe2020-top25: true
+      cwe2021-top25: true
+      display-name: MCP Sampling Request Detected
+      functional-categories:
+        - ai::sink::llm-prompt::mcp
+        - ai::source::mcp-sampling::java
+      owasp:
+        - A01:2021 - Broken Access Control
+      references:
+        - https://github.com/modelcontextprotocol/servers/blob/28a313206c7f1350ba946a923044f2f05a5a54f1/src/everything/everything.ts#L232-L255
+        - https://modelcontextprotocol.io/specification/2025-06-18/server/sampling
+      technology:
+        - java
+        - mcp
+      license: Semgrep Rules License v1.0. For more details, visit semgrep.dev/legal/rules-license
+      vulnerability_class:
+        - Mishandled Sensitive Information
+    languages:
+      - java
+    pattern: '"sampling/createMessage"'

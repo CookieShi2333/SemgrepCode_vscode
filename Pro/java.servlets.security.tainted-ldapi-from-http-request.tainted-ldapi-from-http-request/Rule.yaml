@@ -1,0 +1,81 @@
+rules:
+  - id: tainted-ldapi-from-http-request
+    message: Detected input from a HTTPServletRequest going into an LDAP query. This could lead to LDAP injection if the input is not properly santized, which could result in attackers modifying objects in the LDAP tree structure. Ensure data passed to an LDAP query is not controllable or properly sanitize the data.
+    severity: CRITICAL
+    metadata:
+      likelihood: HIGH
+      impact: HIGH
+      confidence: MEDIUM
+      category: security
+      subcategory:
+        - vuln
+      cwe:
+        - "CWE-90: Improper Neutralization of Special Elements used in an LDAP Query ('LDAP Injection')"
+      functional-categories:
+        - web::source::cookie::Servlet
+        - web::source::http-params::Servlet
+        - web::source::http-body::Servlet
+        - web::source::header::Servlet
+        - web::source::session-properties::Servlet
+        - web::source::url-path-params::Servlet
+        - web::source::form-data::Servlet
+        - ldap::sink::ldap-query::javax.naming
+      owasp:
+        - A01:2017 - Injection
+        - A03:2021 - Injection
+        - A05:2025 - Injection
+      references:
+        - https://owasp.org/www-community/attacks/LDAP_Injection
+        - https://cheatsheetseries.owasp.org/cheatsheets/LDAP_Injection_Prevention_Cheat_Sheet.html
+        - https://cwe.mitre.org/data/definitions/90.html
+      technology:
+        - java
+        - servlets
+      license: Semgrep Rules License v1.0. For more details, visit semgrep.dev/legal/rules-license
+      vulnerability_class:
+        - LDAP Injection
+    languages:
+      - java
+    mode: taint
+    pattern-sources:
+      - patterns:
+          - pattern-either:
+              - pattern: (HttpServletRequest $REQ)
+              - pattern: (HttpServletRequest $REQ).$REQFUNC(...)
+              - pattern: (ServletRequest $REQ).$REQFUNC(...)
+              - patterns:
+                  - pattern-inside: |
+                      (javax.servlet.http.Cookie[] $COOKIES) = (HttpServletRequest $REQ).getCookies(...);
+                      ...
+                      for (javax.servlet.http.Cookie $COOKIE: $COOKIES) {
+                        ...
+                      }
+                  - pattern: $COOKIE.getValue(...)
+              - patterns:
+                  - pattern-inside: |
+                      $TYPE[] $VALS = (HttpServletRequest $REQ).$GETFUNC(...);
+                      ...
+                  - pattern: $PARAM = $VALS[$INDEX];
+          - pattern-not: $REQ.getUserPrincipal()
+          - pattern-not: $REQ.getSession(...)
+          - pattern-not: $REQ.getAuthType(...)
+          - pattern-not: $REQ.getMethod(...)
+          - pattern-not: $REQ.getLocales(...)
+          - pattern-not: $REQ.getLocale(...)
+          - pattern-not: $REQ.isUserinRole(...)
+          - pattern-not: $REQ.isRequestdSessionIdValid(...)
+          - pattern-not: $REQ.isRequestedSessionIdFromUrl(...)
+          - pattern-not: $REQ.getIntHeader(...)
+          - pattern-not: $REQ.getDateHeader(...)
+          - pattern-not: $REQ.authenticate(...)
+          - pattern-not: $REQ.isUserInRole(...)
+          - pattern-not: $REQ.getAttribute(...)
+          - pattern-not: $REQ.getAttributeNames(...)
+          - pattern-not: $REQ.getAuthType(...)
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: (javax.naming.directory.InitialDirContext $IDC).search(...)
+              - pattern: (javax.naming.directory.DirContext $CTX).search(...)
+          - pattern-not: (javax.naming.directory.InitialDirContext $IDC).search($Y, "...", ...)
+          - pattern-not: (javax.naming.directory.DirContext $CTX).search($Y, "...", ...)

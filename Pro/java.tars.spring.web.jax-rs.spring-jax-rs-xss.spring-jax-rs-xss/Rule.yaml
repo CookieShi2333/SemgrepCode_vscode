@@ -1,0 +1,248 @@
+rules:
+  - id: spring-jax-rs-xss
+    message: Untrusted input could be used to tamper with a web page rendering, which can lead to a Cross-site scripting (XSS) vulnerability. XSS vulnerabilities occur when untrusted input executes malicious JavaScript code, leading to issues such as account compromise and sensitive information leakage. To prevent this vulnerability, validate the user input, perform contextual output encoding or sanitize the input.
+    severity: WARNING
+    metadata:
+      likelihood: MEDIUM
+      impact: MEDIUM
+      confidence: HIGH
+      category: security
+      subcategory:
+        - vuln
+      cwe:
+        - "CWE-79: Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting')"
+      cwe2020-top25: true
+      cwe2021-top25: true
+      cwe2022-top25: true
+      display-name: Cross-site Scripting (XSS) in jax-rs with Spring
+      functional-categories:
+        - web::sink::html-webpage::jax-rs
+        - web::sink::html-webpage::jax-rs::jax-rs
+        - web::source::cookie::Spring
+        - web::source::header::Spring
+      owasp:
+        - A03:2021 - Injection
+        - A05:2025 - Injection
+        - A07:2017 - Cross-Site Scripting (XSS)
+      references:
+        - https://owasp.org/Top10/2025/A05_2025-Injection/
+        - https://owasp.org/Top10/A03_2021-Injection
+      technology:
+        - Spring
+        - java
+        - jax-rs
+      license: Semgrep Rules License v1.0. For more details, visit semgrep.dev/legal/rules-license
+      vulnerability_class:
+        - Cross-Site-Scripting (XSS)
+    languages:
+      - java
+    mode: taint
+    options:
+      taint_assume_safe_booleans: true
+      taint_assume_safe_numbers: true
+    pattern-sources:
+      - patterns:
+          - pattern-either:
+              - pattern: $RET $METHOD(..., @$REQ(...) String $SOURCE, ...) {...}
+              - pattern: $RET $METHOD(..., @$REQ String $SOURCE, ...) {...}
+          - metavariable-regex:
+              metavariable: $REQ
+              regex: (RequestHeader|CookieValue)
+          - focus-metavariable: $SOURCE
+      - patterns:
+          - pattern: (org.springframework.http.HttpRequest $REQ).$METHOD(...)
+          - metavariable-regex:
+              metavariable: $METHOD
+              regex: (getHeaders|getCookies)
+    pattern-propagators:
+      - from: $FROM
+        patterns:
+          - pattern-either:
+              - patterns:
+                  - pattern-either:
+                      - pattern: $TO.add($FROM)
+                      - pattern: $TO.add($X, $FROM)
+                      - pattern: $TO.addAll($FROM)
+                      - pattern: $TO.addAll($X, $FROM)
+                      - pattern: $TO.addFirst(..., $FROM, ...)
+                      - pattern: $TO.addLast(..., $FROM, ...)
+                      - pattern: $TO.addAllAbsent(..., $FROM, ...)
+                      - pattern: $TO.addIfAbsent(..., $FROM, ...)
+                      - pattern: $TO.addElement(..., $FROM, ...)
+                      - pattern: $TO.set($X, $FROM)
+                      - pattern: $TO.push(..., $FROM, ...)
+                      - pattern: $TO.setElementAt(..., $FROM, ...)
+                      - pattern: $TO.replaceAll(..., $FROM, ...)
+                      - pattern: $TO.insertElementAt($FROM, ...)
+                  - metavariable-type:
+                      metavariable: $TO
+                      types:
+                        - java.util.List
+                        - java.util.List<$_>
+                        - java.util.Stack
+                        - java.util.Stack<$_>
+                        - java.util.Vector
+                        - java.util.Vector<$_>
+                        - java.util.ArrayList
+                        - java.util.ArrayList<$_>
+                        - java.util.LinkedList
+                        - java.util.LinkedList<$_>
+                        - java.util.AbstractList
+                        - java.util.AbstractList<$_>
+                        - java.util.AbstractSequentialList
+                        - java.util.AbstractSequentialList<$_>
+                        - java.util.concurrent.CopyOnWriteArrayList
+                        - java.util.concurrent.CopyOnWriteArrayList<$_>
+              - patterns:
+                  - pattern-either:
+                      - pattern: $TO.add(..., $FROM, ...)
+                      - pattern: $TO.addFirst(..., $FROM, ...)
+                      - pattern: $TO.addLast(..., $FROM, ...)
+                      - pattern: $TO.addAll(..., $FROM, ...)
+                      - pattern: $TO.put(..., $FROM, ...)
+                      - pattern: $TO.putLast(..., $FROM, ...)
+                      - pattern: $TO.putFirst(..., $FROM, ...)
+                      - pattern: $TO.push(..., $FROM, ...)
+                      - pattern: $TO.offer($FROM, ...)
+                      - pattern: $TO.offerLast($FROM, ...)
+                      - pattern: $TO.offerFirst($FROM, ...)
+                  - metavariable-type:
+                      metavariable: $TO
+                      types:
+                        - java.util.Queue
+                        - java.util.Queue<$_>
+                        - java.util.Deque
+                        - java.util.Deque<$_>
+                        - java.util.ArrayDeque
+                        - java.util.ArrayDeque<$_>
+                        - java.util.AbstractQueue
+                        - java.util.AbstractQueue<$_>
+                        - java.util.concurrent.DelayQueue
+                        - java.util.concurrent.DelayQueue<$_>
+                        - java.util.concurrent.BlockingQueue
+                        - java.util.concurrent.BlockingQueue<$_>
+                        - java.util.concurrent.TransferQueue
+                        - java.util.concurrent.TransferQueue<$_>
+                        - java.util.concurrent.BlockingDeque
+                        - java.util.concurrent.BlockingDeque<$_>
+                        - java.util.concurrent.SynchronousQueue
+                        - java.util.concurrent.SynchronousQueue<$_>
+                        - java.util.concurrent.LinkedTransferQueue
+                        - java.util.concurrent.LinkedTransferQueue<$_>
+                        - java.util.concurrent.ArrayBlockingQueue
+                        - java.util.concurrent.ArrayBlockingQueue<$_>
+                        - java.util.concurrent.LinkedBlockingDeque
+                        - java.util.concurrent.LinkedBlockingDeque<$_>
+                        - java.util.concurrent.LinkedBlockingQueue
+                        - java.util.concurrent.LinkedBlockingQueue<$_>
+                        - java.util.concurrent.PriorityBlockingQueue
+                        - java.util.concurrent.PriorityBlockingQueue<$_>
+                        - java.util.concurrent.ConcurrentLinkedDeque
+                        - java.util.concurrent.ConcurrentLinkedDeque<$_>
+              - patterns:
+                  - pattern-either:
+                      - pattern: $TO.add(..., $FROM, ...)
+                      - pattern: $TO.addAll(..., $FROM, ...)
+                  - metavariable-type:
+                      metavariable: $TO
+                      types:
+                        - java.util.Set
+                        - java.util.Set<$_>
+                        - java.util.TreeSet
+                        - java.util.TreeSet<$_>
+                        - java.util.EnumSet
+                        - java.util.EnumSet<$_>
+                        - java.util.HashSet
+                        - java.util.HashSet<$_>
+                        - java.util.SortedSet
+                        - java.util.SortedSet<$_>
+                        - java.util.AbstractSet
+                        - java.util.AbstractSet<$_>
+                        - java.util.NavigableSet
+                        - java.util.NavigableSet<$_>
+                        - java.util.LinkedHashSet
+                        - java.util.LinkedHashSet<$_>
+                        - java.util.AbstractCollection
+                        - java.util.AbstractCollection<$_>
+                        - java.util.concurrent.CopyOnWriteArraySet
+                        - java.util.concurrent.CopyOnWriteArraySet<$_>
+                        - java.util.concurrent.ConcurrentSkipListSet
+                        - java.util.concurrent.ConcurrentSkipListSet<$_>
+                        - java.util.concurrent.ConcurrentHashMap.KeySetView
+                        - java.util.concurrent.ConcurrentHashMap.KeySetView<$_>
+              - patterns:
+                  - pattern-either:
+                      - pattern: $TO.merge(..., $FROM, ...)
+                      - pattern: $TO.put(..., $FROM, ...)
+                      - pattern: $TO.putAll(..., $FROM, ...)
+                      - pattern: $TO.putIfAbsent(..., $FROM, ...)
+                      - pattern: $TO.replace($X, ..., $FROM, ...)
+                      - pattern: $TO.replaceAll(..., $FROM, ...)
+                  - metavariable-type:
+                      metavariable: $TO
+                      types:
+                        - java.util.Map
+                        - java.util.Map<$_, $_>
+                        - java.util.NavigableMap
+                        - java.util.NavigableMap<$_, $_>
+                        - java.util.SortedMap
+                        - java.util.SortedMap<$_, $_>
+                        - java.util.TreeMap
+                        - java.util.TreeMap<$_, $_>
+                        - java.util.AbstractMap
+                        - java.util.AbstractMap<$_, $_>
+                        - java.util.EnumMap
+                        - java.util.EnumMap<$_, $_>
+                        - java.util.HashMap
+                        - java.util.HashMap<$_, $_>
+                        - java.util.Hashtable
+                        - java.util.Hashtable<$_, $_>
+                        - java.util.IdentityHashMap
+                        - java.util.IdentityHashMap<$_, $_>
+                        - java.util.LinkedHashMap
+                        - java.util.LinkedHashMap<$_, $_>
+                        - java.util.WeakHashMap
+                        - java.util.WeakHashMap<$_, $_>
+                        - java.util.concurrent.ConcurrentMap
+                        - java.util.concurrent.ConcurrentMap<$_, $_>
+                        - java.util.concurrent.ConcurrentHashMap
+                        - java.util.concurrent.ConcurrentHashMap<$_, $_>
+                        - java.util.concurrent.ConcurrentSkipListMap
+                        - java.util.concurrent.ConcurrentSkipListMap<$_, $_>
+                        - java.util.concurrent.ConcurrentNavigableMap
+                        - java.util.concurrent.ConcurrentNavigableMap<$_, $_>
+                        - java.util.Properties
+                        - java.util.Properties<$_, $_>
+        to: $TO
+      - from: $INPUT
+        patterns:
+          - pattern-either:
+              - pattern: String.format($FMT, ..., $INPUT, ...)
+              - pattern: MessageFormat.format($FMT, ..., $INPUT, ...)
+        to: $FMT
+      - from: $FROM
+        patterns:
+          - pattern-either:
+              - pattern: (StringBuilder $TO).append($FROM, ...)
+              - pattern: (StringBuilder $TO).insert($OFFSET, $FROM, ...)
+              - pattern: (StringBuilder $TO).replace($START, $END, $FROM, ...)
+              - pattern: (StringBuffer $TO).append($FROM, ...)
+              - pattern: (StringBuffer $TO).insert($OFFSET, $FROM, ...)
+        to: $TO
+    pattern-sinks:
+      - patterns:
+          - pattern-inside: |
+              @Produces(MediaType.TEXT_HTML)
+              public String $FUNC(...) {
+                  ...
+              }
+          - pattern-either:
+              - pattern: return $SINK;
+              - pattern: (javax.ws.rs.core.Response $RES). ... .ok($SINK). ...
+              - pattern: (javax.ws.rs.core.Response $RES). ... .accepted($SINK). ...
+              - pattern: (javax.ws.rs.core.Response $RES). ... .entity($SINK). ...
+      - pattern: (javax.ws.rs.core.Response $RES). ... .ok($SINK, MediaType.TEXT_HTML_TYPE). ...
+    pattern-sanitizers:
+      - pattern: (ChoiceFormat $X).format(...)
+      - pattern: (DecimalFormat $X).format(...)
+      - pattern: (java.util.UUID $X)

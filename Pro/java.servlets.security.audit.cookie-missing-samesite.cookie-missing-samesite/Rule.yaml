@@ -1,0 +1,46 @@
+rules:
+  - id: cookie-missing-samesite
+    message: 'The application does not appear to verify inbound requests which can lead to a Cross-site request forgery (CSRF) vulnerability. If the application uses cookie-based authentication, an attacker can trick users into sending authenticated HTTP requests without their knowledge from any arbitrary domain they visit. To prevent this vulnerability start by identifying if the framework or library leveraged has built-in features or offers plugins for CSRF protection. CSRF tokens should be unique and securely random. The `Synchronizer Token` or `Double Submit Cookie` patterns with defense-in- depth mechanisms such as the `sameSite` cookie flag can help prevent CSRF. For more information, see: [Cross-site request forgery prevention](https://cheatsheetseries.owasp.org/cheatsheets/Cross- Site_Request_Forgery_Prevention_Cheat_Sheet.html)'
+    severity: WARNING
+    metadata:
+      likelihood: LOW
+      impact: LOW
+      confidence: HIGH
+      category: security
+      subcategory:
+        - audit
+      asvs:
+        section: 'V3: Session Management Verification Requirements'
+        control_id: 3.4.3 Missing Cookie Attribute
+        control_url: https://github.com/OWASP/ASVS/blob/master/4.0/en/0x12-V3-Session-management.md#v34-cookie-based-session-management
+        version: '4'
+      cwe:
+        - "CWE-352: Cross-Site Request Forgery (CSRF)"
+      cwe2021-top25: true
+      cwe2022-top25: true
+      functional-categories:
+        - web::search::cookie-config::Servlet
+      owasp:
+        - A01:2021 - Broken Access Control
+        - A01:2025 - Broken Access Control
+      references:
+        - https://stackoverflow.com/questions/42717210/samesite-cookie-in-java-application
+      technology:
+        - java
+        - servlets
+      license: Semgrep Rules License v1.0. For more details, visit semgrep.dev/legal/rules-license
+      vulnerability_class:
+        - Cross-Site Request Forgery (CSRF)
+    languages:
+      - java
+    patterns:
+      - pattern-not-inside: |
+          $RETURNTYPE $METHOD(..., HttpServletResponse $RESP, ...) {
+            ...
+            $RESP.setHeader("Set-Cookie", "=~/.*SameSite=.*/");
+            ...
+          }
+      - pattern-either:
+          - pattern: $RESP.addCookie(...);
+          - pattern: $RESP.setHeader("Set-Cookie", ...);
+      - pattern-not: $RESP.setHeader("Set-Cookie", null);

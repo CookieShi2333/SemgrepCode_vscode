@@ -1,0 +1,97 @@
+rules:
+  - id: mcp-shell-injection-taint
+    message: |
+      Detected MCP server parameter data flowing into a system command execution function.
+      This could result in a command injection vulnerability if an attacker can control
+      the HTTP request parameters, MCP tool arguments, or configuration values. MCP servers
+      handle external requests and should treat all parameter data as untrusted input.
+      An attacker could inject malicious commands to execute arbitrary code on the server.
+
+      To fix this:
+      1. Avoid using Runtime.exec() with concatenated strings
+      2. Use ProcessBuilder with individual arguments instead of shell commands
+      3. Validate and sanitize all input parameters
+      4. Use allowlisting to restrict allowed commands and arguments
+      5. Consider using Java APIs instead of system commands when possible
+      6. If shell commands are necessary, use proper escaping and validation
+    severity: CRITICAL
+    metadata:
+      likelihood: HIGH
+      impact: HIGH
+      confidence: HIGH
+      interfile: true
+      category: security
+      subcategory:
+        - vuln
+      cwe:
+        - "CWE-78: Improper Neutralization of Special Elements used in an OS Command ('OS Command Injection')"
+      cwe2020-top25: true
+      cwe2021-top25: true
+      cwe2022-top25: true
+      display-name: Shell Command Injection via MCP Server Parameters
+      functional-categories:
+        - ai::source::mcp-tool-params::java
+        - os::sink::command
+      owasp:
+        - A01:2017 - Injection
+        - A03:2021 - Injection
+        - A05:2025 - Injection
+      references:
+        - https://cheatsheetseries.owasp.org/cheatsheets/OS_Command_Injection_Defense_Cheat_Sheet.html
+        - https://docs.oracle.com/javase/8/docs/api/java/lang/ProcessBuilder.html
+        - https://modelcontextprotocol.io/specification/2025-06-18/server/authentication#authorization-requirements
+        - https://owasp.org/Top10/2025/A05_2025-Injection/
+        - https://owasp.org/Top10/A03_2021-Injection
+        - https://owasp.org/www-community/attacks/Command_Injection
+      technology:
+        - java
+        - jax-rs
+        - mcp
+        - spring
+        - spring-boot
+      license: Semgrep Rules License v1.0. For more details, visit semgrep.dev/legal/rules-license
+      vulnerability_class:
+        - Command Injection
+    languages:
+      - java
+    mode: taint
+    min-version: 1.71.0
+    pattern-sources:
+      - patterns:
+          - pattern-inside: |
+              @Tool(...)
+              public $RETURN $METHOD(..., $TYPE $PARAM, ...) {
+                ...
+              }
+          - focus-metavariable: $PARAM
+      - patterns:
+          - pattern-inside: |
+              @Tool(...)
+              $RETURN $METHOD(..., $TYPE $PARAM, ...) {
+                ...
+              }
+          - focus-metavariable: $PARAM
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: Runtime.getRuntime(...).$EXEC($CMD,...)
+              - pattern: (Runtime $R).$EXEC($CMD,...)
+          - metavariable-regex:
+              metavariable: $EXEC
+              regex: (exec|loadLibrary|load)
+          - focus-metavariable: $CMD
+      - patterns:
+          - pattern-either:
+              - pattern: new ProcessBuilder($CMD,...)
+              - pattern: new ProcessBuilder(...). ... .command($CMD,...)
+              - pattern: (ProcessBuilder $P). ... .command($CMD,...)
+          - focus-metavariable: $CMD
+      - patterns:
+          - pattern-either:
+              - pattern: new ProcessBuilder($SH, "-c", $CMD,...)
+              - pattern: new ProcessBuilder(...). ... .command($SH, "-c", $CMD,...)
+              - pattern: (ProcessBuilder $P). ... .command($SH, "-c", $CMD,...)
+          - metavariable-regex:
+              metavariable: $SH
+              regex: .*\/?(bash|csh|dash|fish|ksh|tcsh|sh|zsh)\"?$
+          - focus-metavariable: $CMD

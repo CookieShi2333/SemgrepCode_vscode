@@ -1,0 +1,44 @@
+rules:
+  - id: url-rewriting
+    message: URL rewriting has significant security risks. Since session ID appears in the URL, it may be easily seen by third parties.
+    severity: CRITICAL
+    metadata:
+      likelihood: HIGH
+      impact: HIGH
+      confidence: MEDIUM
+      category: security
+      subcategory:
+        - vuln
+      cwe:
+        - "CWE-200: Exposure of Sensitive Information to an Unauthorized Actor"
+      cwe2021-top25: true
+      functional-categories:
+        - web::sink::redirect::Servlet
+        - web::sink::session-properties::Servlet
+        - web::sink::http-request::Servlet
+      owasp:
+        - A01:2021 - Broken Access Control
+        - A01:2025 - Broken Access Control
+      references:
+        - https://owasp.org/Top10/A07_2021-Identification_and_Authentication_Failures/
+        - https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html
+        - https://portal.securecodewarrior.com/#/learning-resources/application_security_weaknesses~2Fweb~2Fauth~2Fsession~2Fexposedtokens
+      source-rule-url: https://find-sec-bugs.github.io/bugs.htm#URL_REWRITING
+      technology:
+        - java
+        - servlets
+      license: Semgrep Rules License v1.0. For more details, visit semgrep.dev/legal/rules-license
+      vulnerability_class:
+        - Mishandled Sensitive Information
+    languages:
+      - java
+    mode: taint
+    min-version: 1.71.0
+    pattern-sources:
+      - pattern: (HttpServletResponse $RES)
+    pattern-sinks:
+      - pattern-either:
+          - pattern: $RES.encodeURL(...);
+          - pattern: $RES.encodeUrl(...);
+          - pattern: $RES.encodeRedirectURL(...);
+          - pattern: $RES.encodeRedirectUrl(...);

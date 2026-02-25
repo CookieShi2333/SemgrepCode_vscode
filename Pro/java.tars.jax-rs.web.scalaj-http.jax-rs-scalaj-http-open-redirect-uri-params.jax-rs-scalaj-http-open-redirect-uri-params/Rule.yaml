@@ -1,0 +1,284 @@
+rules:
+  - id: jax-rs-scalaj-http-open-redirect-uri-params
+    message: The application builds a URL using user-controlled input which can lead to an open redirect vulnerability. An attacker can manipulate the URL and redirect users to an arbitrary domain. Open redirect vulnerabilities can lead to issues such as Cross-site scripting (XSS) or redirecting to a malicious domain for activities such as phishing to capture users' credentials. To prevent this vulnerability perform strict input validation of the domain against an allowlist of approved domains. Notify a user in your application that they are leaving the website. Display a domain where they are redirected to the user. A user can then either accept or deny the redirect to an untrusted site.
+    severity: WARNING
+    metadata:
+      likelihood: MEDIUM
+      impact: MEDIUM
+      confidence: HIGH
+      category: security
+      subcategory:
+        - vuln
+      cwe:
+        - "CWE-601: URL Redirection to Untrusted Site ('Open Redirect')"
+      display-name: Open Redirect in scalaj-http with Jax Rs
+      functional-categories:
+        - web::sink::redirect::scalaj-http
+        - web::sink::redirect::scalaj-http::scalaj-http
+        - web::source::cookie::jax-rs
+        - web::source::form-data::jax-rs
+        - web::source::header::jax-rs
+        - web::source::http-body::jax-rs
+        - web::source::url-path-params::jax-rs
+        - web::source::url-query-string::jax-rs
+      owasp:
+        - A01:2021 - Broken Access Control
+        - A01:2025 - Broken Access Control
+      references:
+        - https://owasp.org/Top10/2025/A01_2025-Broken_Access_Control/
+        - https://owasp.org/Top10/A01_2021-Broken_Access_Control
+      technology:
+        - java
+        - jax-rs
+        - scalaj-http
+      license: Semgrep Rules License v1.0. For more details, visit semgrep.dev/legal/rules-license
+      vulnerability_class:
+        - Open Redirect
+    languages:
+      - java
+    mode: taint
+    options:
+      taint_assume_safe_booleans: true
+      taint_assume_safe_numbers: true
+    pattern-sources:
+      - patterns:
+          - pattern-either:
+              - pattern: $RET $METHOD(..., @$ANNOTATION(...) $TYPE $SOURCE, ...) {...}
+              - pattern: $RET $METHOD(..., @$ANNOTATION $TYPE $SOURCE, ...) {...}
+          - metavariable-regex:
+              metavariable: $ANNOTATION
+              regex: (PathParam|QueryParam|FormParam|HeaderParam|CookieParam|MatrixParam|BeanParam)
+          - focus-metavariable: $SOURCE
+      - patterns:
+          - pattern-either:
+              - pattern: $RET $METHOD(..., @$ANNOTATION $TYPE $SOURCE, ...) {...}
+          - metavariable-regex:
+              metavariable: $ANNOTATION
+              regex: .*Context
+          - metavariable-type:
+              metavariable: $TYPE
+              types:
+                - javax.ws.rs.core.UriInfo
+                - javax.ws.rs.core.HttpHeaders
+                - javax.ws.rs.core.Request
+                - javax.ws.rs.core.SecurityContext
+                - jakarta.ws.rs.core.UriInfo
+                - jakarta.ws.rs.core.HttpHeaders
+                - jakarta.ws.rs.core.Request
+                - jakarta.ws.rs.core.SecurityContext
+          - focus-metavariable: $SOURCE
+      - patterns:
+          - pattern-either:
+              - pattern: (javax.ws.rs.core.UriInfo $URI).$METHOD(...)
+              - pattern: (jakarta.ws.rs.core.UriInfo $URI).$METHOD(...)
+          - metavariable-regex:
+              metavariable: $METHOD
+              regex: (getPathParameters|getQueryParameters|getMatrixParameters|getAbsolutePath|getBaseUri|getPath|getRequestUri)
+      - patterns:
+          - pattern-either:
+              - pattern: (javax.ws.rs.core.HttpHeaders $HEADERS).$METHOD(...)
+              - pattern: (jakarta.ws.rs.core.HttpHeaders $HEADERS).$METHOD(...)
+          - metavariable-regex:
+              metavariable: $METHOD
+              regex: (getRequestHeader|getRequestHeaders|getHeaderString|getCookies)
+    pattern-propagators:
+      - from: $FROM
+        patterns:
+          - pattern-either:
+              - patterns:
+                  - pattern-either:
+                      - pattern: $TO.add($FROM)
+                      - pattern: $TO.add($X, $FROM)
+                      - pattern: $TO.addAll($FROM)
+                      - pattern: $TO.addAll($X, $FROM)
+                      - pattern: $TO.addFirst(..., $FROM, ...)
+                      - pattern: $TO.addLast(..., $FROM, ...)
+                      - pattern: $TO.addAllAbsent(..., $FROM, ...)
+                      - pattern: $TO.addIfAbsent(..., $FROM, ...)
+                      - pattern: $TO.addElement(..., $FROM, ...)
+                      - pattern: $TO.set($X, $FROM)
+                      - pattern: $TO.push(..., $FROM, ...)
+                      - pattern: $TO.setElementAt(..., $FROM, ...)
+                      - pattern: $TO.replaceAll(..., $FROM, ...)
+                      - pattern: $TO.insertElementAt($FROM, ...)
+                  - metavariable-type:
+                      metavariable: $TO
+                      types:
+                        - java.util.List
+                        - java.util.List<$_>
+                        - java.util.Stack
+                        - java.util.Stack<$_>
+                        - java.util.Vector
+                        - java.util.Vector<$_>
+                        - java.util.ArrayList
+                        - java.util.ArrayList<$_>
+                        - java.util.LinkedList
+                        - java.util.LinkedList<$_>
+                        - java.util.AbstractList
+                        - java.util.AbstractList<$_>
+                        - java.util.AbstractSequentialList
+                        - java.util.AbstractSequentialList<$_>
+                        - java.util.concurrent.CopyOnWriteArrayList
+                        - java.util.concurrent.CopyOnWriteArrayList<$_>
+              - patterns:
+                  - pattern-either:
+                      - pattern: $TO.add(..., $FROM, ...)
+                      - pattern: $TO.addFirst(..., $FROM, ...)
+                      - pattern: $TO.addLast(..., $FROM, ...)
+                      - pattern: $TO.addAll(..., $FROM, ...)
+                      - pattern: $TO.put(..., $FROM, ...)
+                      - pattern: $TO.putLast(..., $FROM, ...)
+                      - pattern: $TO.putFirst(..., $FROM, ...)
+                      - pattern: $TO.push(..., $FROM, ...)
+                      - pattern: $TO.offer($FROM, ...)
+                      - pattern: $TO.offerLast($FROM, ...)
+                      - pattern: $TO.offerFirst($FROM, ...)
+                  - metavariable-type:
+                      metavariable: $TO
+                      types:
+                        - java.util.Queue
+                        - java.util.Queue<$_>
+                        - java.util.Deque
+                        - java.util.Deque<$_>
+                        - java.util.ArrayDeque
+                        - java.util.ArrayDeque<$_>
+                        - java.util.AbstractQueue
+                        - java.util.AbstractQueue<$_>
+                        - java.util.concurrent.DelayQueue
+                        - java.util.concurrent.DelayQueue<$_>
+                        - java.util.concurrent.BlockingQueue
+                        - java.util.concurrent.BlockingQueue<$_>
+                        - java.util.concurrent.TransferQueue
+                        - java.util.concurrent.TransferQueue<$_>
+                        - java.util.concurrent.BlockingDeque
+                        - java.util.concurrent.BlockingDeque<$_>
+                        - java.util.concurrent.SynchronousQueue
+                        - java.util.concurrent.SynchronousQueue<$_>
+                        - java.util.concurrent.LinkedTransferQueue
+                        - java.util.concurrent.LinkedTransferQueue<$_>
+                        - java.util.concurrent.ArrayBlockingQueue
+                        - java.util.concurrent.ArrayBlockingQueue<$_>
+                        - java.util.concurrent.LinkedBlockingDeque
+                        - java.util.concurrent.LinkedBlockingDeque<$_>
+                        - java.util.concurrent.LinkedBlockingQueue
+                        - java.util.concurrent.LinkedBlockingQueue<$_>
+                        - java.util.concurrent.PriorityBlockingQueue
+                        - java.util.concurrent.PriorityBlockingQueue<$_>
+                        - java.util.concurrent.ConcurrentLinkedDeque
+                        - java.util.concurrent.ConcurrentLinkedDeque<$_>
+              - patterns:
+                  - pattern-either:
+                      - pattern: $TO.add(..., $FROM, ...)
+                      - pattern: $TO.addAll(..., $FROM, ...)
+                  - metavariable-type:
+                      metavariable: $TO
+                      types:
+                        - java.util.Set
+                        - java.util.Set<$_>
+                        - java.util.TreeSet
+                        - java.util.TreeSet<$_>
+                        - java.util.EnumSet
+                        - java.util.EnumSet<$_>
+                        - java.util.HashSet
+                        - java.util.HashSet<$_>
+                        - java.util.SortedSet
+                        - java.util.SortedSet<$_>
+                        - java.util.AbstractSet
+                        - java.util.AbstractSet<$_>
+                        - java.util.NavigableSet
+                        - java.util.NavigableSet<$_>
+                        - java.util.LinkedHashSet
+                        - java.util.LinkedHashSet<$_>
+                        - java.util.AbstractCollection
+                        - java.util.AbstractCollection<$_>
+                        - java.util.concurrent.CopyOnWriteArraySet
+                        - java.util.concurrent.CopyOnWriteArraySet<$_>
+                        - java.util.concurrent.ConcurrentSkipListSet
+                        - java.util.concurrent.ConcurrentSkipListSet<$_>
+                        - java.util.concurrent.ConcurrentHashMap.KeySetView
+                        - java.util.concurrent.ConcurrentHashMap.KeySetView<$_>
+              - patterns:
+                  - pattern-either:
+                      - pattern: $TO.merge(..., $FROM, ...)
+                      - pattern: $TO.put(..., $FROM, ...)
+                      - pattern: $TO.putAll(..., $FROM, ...)
+                      - pattern: $TO.putIfAbsent(..., $FROM, ...)
+                      - pattern: $TO.replace($X, ..., $FROM, ...)
+                      - pattern: $TO.replaceAll(..., $FROM, ...)
+                  - metavariable-type:
+                      metavariable: $TO
+                      types:
+                        - java.util.Map
+                        - java.util.Map<$_, $_>
+                        - java.util.NavigableMap
+                        - java.util.NavigableMap<$_, $_>
+                        - java.util.SortedMap
+                        - java.util.SortedMap<$_, $_>
+                        - java.util.TreeMap
+                        - java.util.TreeMap<$_, $_>
+                        - java.util.AbstractMap
+                        - java.util.AbstractMap<$_, $_>
+                        - java.util.EnumMap
+                        - java.util.EnumMap<$_, $_>
+                        - java.util.HashMap
+                        - java.util.HashMap<$_, $_>
+                        - java.util.Hashtable
+                        - java.util.Hashtable<$_, $_>
+                        - java.util.IdentityHashMap
+                        - java.util.IdentityHashMap<$_, $_>
+                        - java.util.LinkedHashMap
+                        - java.util.LinkedHashMap<$_, $_>
+                        - java.util.WeakHashMap
+                        - java.util.WeakHashMap<$_, $_>
+                        - java.util.concurrent.ConcurrentMap
+                        - java.util.concurrent.ConcurrentMap<$_, $_>
+                        - java.util.concurrent.ConcurrentHashMap
+                        - java.util.concurrent.ConcurrentHashMap<$_, $_>
+                        - java.util.concurrent.ConcurrentSkipListMap
+                        - java.util.concurrent.ConcurrentSkipListMap<$_, $_>
+                        - java.util.concurrent.ConcurrentNavigableMap
+                        - java.util.concurrent.ConcurrentNavigableMap<$_, $_>
+                        - java.util.Properties
+                        - java.util.Properties<$_, $_>
+        to: $TO
+      - from: $INPUT
+        patterns:
+          - pattern-either:
+              - pattern: String.format($FMT, ..., $INPUT, ...)
+              - pattern: MessageFormat.format($FMT, ..., $INPUT, ...)
+        to: $FMT
+      - from: $FROM
+        patterns:
+          - pattern-either:
+              - pattern: (StringBuilder $TO).append($FROM, ...)
+              - pattern: (StringBuilder $TO).insert($OFFSET, $FROM, ...)
+              - pattern: (StringBuilder $TO).replace($START, $END, $FROM, ...)
+              - pattern: (StringBuffer $TO).append($FROM, ...)
+              - pattern: (StringBuffer $TO).insert($OFFSET, $FROM, ...)
+        to: $TO
+    pattern-sinks:
+      - patterns:
+          - focus-metavariable: $SINK
+          - pattern-either:
+              - patterns:
+                  - pattern-either:
+                      - pattern-inside: |
+                          import scalaj.*;
+                          ...
+                      - pattern-inside: |
+                          import scalaj.http;
+                          ...
+                  - pattern: http.HttpConstants.appendQs($SINK, $_, $_)
+              - patterns:
+                  - pattern-either:
+                      - pattern-inside: |
+                          import scalaj.http.*;
+                          ...
+                      - pattern-inside: |
+                          import scalaj.http.HttpConstants;
+                          ...
+                  - pattern: HttpConstants.appendQs($SINK, $_, $_)
+    pattern-sanitizers:
+      - pattern: (ChoiceFormat $X).format(...)
+      - pattern: (DecimalFormat $X).format(...)
+      - pattern: (java.util.UUID $X)

@@ -1,0 +1,56 @@
+rules:
+  - id: simple-command-injection-direct-input
+    message: 'Untrusted input might be injected into a command executed by the application, which can lead to a command injection vulnerability. An attacker can execute arbitrary commands, potentially gaining complete control of the system. To prevent this vulnerability, avoid executing OS commands with user input. If this is unavoidable, validate and sanitize the input, and use safe methods for executing the commands. For more information, see: [Java command injection prevention] (https://semgrep.dev/docs/cheat-sheets/java-command-injection/)'
+    severity: ERROR
+    metadata:
+      likelihood: MEDIUM
+      impact: HIGH
+      confidence: HIGH
+      category: security
+      subcategory:
+        - vuln
+      cwe:
+        - "CWE-78: Improper Neutralization of Special Elements used in an OS Command ('OS Command Injection')"
+      cwe2020-top25: true
+      cwe2021-top25: true
+      cwe2022-top25: true
+      display-name: OS Command Injection with Spring
+      functional-categories:
+        - os::sink::command
+        - web::source::cookie::Spring
+        - web::source::header::Spring
+        - web::source::http-body::Spring
+        - web::source::url-path-params::Spring
+        - web::source::url-query-string::Spring
+      owasp:
+        - A01:2017 - Injection
+        - A03:2021 - Injection
+        - A05:2025 - Injection
+      references:
+        - https://docs.oracle.com/javase/8/docs/api/java/lang/Runtime.html
+        - https://owasp.org/Top10/2025/A05_2025-Injection/
+        - https://owasp.org/Top10/A03_2021-Injection
+      technology:
+        - spring
+      license: Semgrep Rules License v1.0. For more details, visit semgrep.dev/legal/rules-license
+      vulnerability_class:
+        - Command Injection
+    languages:
+      - java
+    patterns:
+      - pattern-either:
+          - pattern-inside: |
+              $METHODNAME(..., @$REQ(...) $TYPE $SOURCE, ...) {
+                ...
+              }
+          - pattern-inside: |
+              $METHODNAME(..., @$REQ $TYPE $SOURCE, ...) {
+                ...
+              }
+      - metavariable-regex:
+          metavariable: $TYPE
+          regex: ^(?!(Integer|Long|Float|Double|Char|Boolean|int|long|float|double|char|boolean))
+      - metavariable-regex:
+          metavariable: $REQ
+          regex: (RequestBody|PathVariable|RequestParam|RequestHeader|CookieValue|ModelAttribute)
+      - pattern: Runtime.getRuntime().exec($SOURCE)

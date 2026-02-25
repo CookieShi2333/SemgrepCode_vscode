@@ -1,0 +1,85 @@
+rules:
+  - id: mcp-ssrf-taint
+    message: |
+      Detected MCP tool parameter data flowing into an HTTP request function.
+      This could result in a Server-Side Request Forgery (SSRF) vulnerability if an attacker
+      can control the URL. MCP tool parameters come from external clients and should be
+      treated as untrusted input. An attacker could use this to:
+      - Access internal services and APIs (e.g., http://localhost, http://169.254.169.254)
+      - Scan internal networks and port scan
+      - Exfiltrate sensitive data to external servers
+      - Bypass firewall restrictions
+      - Access cloud metadata endpoints (AWS, GCP, Azure)
+
+      To fix this:
+      1. Avoid making HTTP requests to user-controlled URLs
+      2. Use an allowlist of permitted domains or URL prefixes
+      3. Validate and parse URLs to ensure they match expected patterns
+      4. Block requests to private IP ranges (RFC 1918) and localhost
+      5. Use a dedicated service or proxy for external requests
+    severity: CRITICAL
+    metadata:
+      likelihood: HIGH
+      impact: HIGH
+      confidence: HIGH
+      interfile: true
+      category: security
+      subcategory:
+        - vuln
+      cwe:
+        - "CWE-918: Server-Side Request Forgery (SSRF)"
+      cwe2021-top25: true
+      cwe2022-top25: true
+      display-name: Server-Side Request Forgery (SSRF) via MCP Tool Parameters
+      functional-categories:
+        - ai::source::mcp-tool-params::java
+        - net::sink::http-request::OkHttp
+      owasp:
+        - A10:2021 - Server-Side Request Forgery (SSRF)
+      references:
+        - https://cheatsheetseries.owasp.org/cheatsheets/Server_Side_Request_Forgery_Prevention_Cheat_Sheet.html
+        - https://modelcontextprotocol.io/specification/2025-06-18/server/authentication#authorization-requirements
+        - https://owasp.org/Top10/2025/A01_2025-Broken_Access_Control/
+        - https://owasp.org/Top10/A10_2021-Server-Side_Request_Forgery_%28SSRF%29
+        - https://owasp.org/www-community/attacks/Server_Side_Request_Forgery
+        - https://portswigger.net/web-security/ssrf
+      technology:
+        - java
+        - mcp
+      license: Semgrep Rules License v1.0. For more details, visit semgrep.dev/legal/rules-license
+      vulnerability_class:
+        - Server-Side Request Forgery (SSRF)
+    languages:
+      - java
+    mode: taint
+    min-version: 1.71.0
+    options:
+      symbolic_propagation: true
+    pattern-sources:
+      - patterns:
+          - pattern-inside: |
+              @Tool(...)
+              public $RETURN $METHOD(..., $TYPE $PARAM, ...) {
+                ...
+              }
+          - focus-metavariable: $PARAM
+      - patterns:
+          - pattern-inside: |
+              @Tool(...)
+              $RETURN $METHOD(..., $TYPE $PARAM, ...) {
+                ...
+              }
+          - focus-metavariable: $PARAM
+    pattern-sinks:
+      - patterns:
+          - focus-metavariable: $URI
+          - pattern-either:
+              - pattern: new okhttp3.Request.Builder(). ... .url($URI)
+          - pattern-either:
+              - pattern-inside: |
+                  ...
+                  $CLIENT.newCall(...).execute(...);
+              - pattern-inside: |
+                  $CALL = $CLIENT.newCall(...);
+                  ...
+                  $CALL.execute(...);

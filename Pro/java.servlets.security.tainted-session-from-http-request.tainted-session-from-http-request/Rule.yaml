@@ -1,0 +1,74 @@
+rules:
+  - id: tainted-session-from-http-request
+    message: Detected input from a HTTPServletRequest going into a session command, like `setAttribute`. User input into such a command could lead to an attacker inputting malicious code into your session parameters, blurring the line between what's trusted and untrusted, and therefore leading to a trust boundary violation. This could lead to programmers trusting unvalidated data. Instead, thoroughly sanitize user input before passing it into such function calls.
+    severity: WARNING
+    metadata:
+      likelihood: HIGH
+      impact: MEDIUM
+      confidence: MEDIUM
+      category: security
+      subcategory:
+        - vuln
+      cwe:
+        - "CWE-501: Trust Boundary Violation"
+      functional-categories:
+        - web::source::cookie::Servlet
+        - web::source::http-params::Servlet
+        - web::source::http-body::Servlet
+        - web::source::header::Servlet
+        - web::source::session-properties::Servlet
+        - web::source::url-path-params::Servlet
+        - web::source::form-data::Servlet
+        - web::sink::session-properties::Servlet
+      owasp:
+        - A04:2021 - Insecure Design
+        - A06:2025 - Insecure Design
+      references:
+        - https://cwe.mitre.org/data/definitions/501.html
+      technology:
+        - java
+        - servlets
+      license: Semgrep Rules License v1.0. For more details, visit semgrep.dev/legal/rules-license
+      vulnerability_class:
+        - Other
+    languages:
+      - java
+    mode: taint
+    pattern-sources:
+      - patterns:
+          - pattern-either:
+              - pattern: (HttpServletRequest $REQ).$REQFUNC(...)
+              - pattern: (ServletRequest $REQ).$REQFUNC(...)
+              - patterns:
+                  - pattern-inside: |
+                      (javax.servlet.http.Cookie[] $COOKIES) = (HttpServletRequest $REQ).getCookies(...);
+                      ...
+                      for (javax.servlet.http.Cookie $COOKIE: $COOKIES) {
+                        ...
+                      }
+                  - pattern: $COOKIE.getValue(...)
+              - patterns:
+                  - pattern-inside: |
+                      $TYPE[] $VALS = (HttpServletRequest $REQ).$GETFUNC(...);
+                      ...
+                  - pattern: $PARAM = $VALS[$INDEX];
+          - pattern-not: $REQ.getUserPrincipal()
+          - pattern-not: $REQ.getSession(...)
+          - pattern-not: $REQ.getAuthType(...)
+          - pattern-not: $REQ.getMethod(...)
+          - pattern-not: $REQ.getLocales(...)
+          - pattern-not: $REQ.getLocale(...)
+          - pattern-not: $REQ.isUserinRole(...)
+          - pattern-not: $REQ.isRequestdSessionIdValid(...)
+          - pattern-not: $REQ.isRequestedSessionIdFromUrl(...)
+          - pattern-not: $REQ.getIntHeader(...)
+          - pattern-not: $REQ.getDateHeader(...)
+          - pattern-not: $REQ.authenticate(...)
+          - pattern-not: $REQ.isUserInRole(...)
+          - pattern-not: $REQ.getAttribute(...)
+          - pattern-not: $REQ.getAttributeNames(...)
+          - pattern-not: $REQ.getAuthType(...)
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: (HttpServletRequest $REQ).getSession().$FUNC(...);
