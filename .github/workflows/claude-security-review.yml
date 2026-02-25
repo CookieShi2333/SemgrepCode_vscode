@@ -1,0 +1,38 @@
+name: Claude Security Review
+
+permissions:
+  pull-requests: write
+  contents: read
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  security-review:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 2
+
+      - name: Run Claude Security Review
+        uses: anthropics/claude-code-security-review@main
+        with:
+          comment-pr: true
+          claude-api-key: ${{ secrets.CLAUDE_API_KEY }}
+          claude-model: claude-opus-4-6
+          claudecode-timeout: 20
+          upload-results: true
+        continue-on-error: true
+
+      - name: Upload security results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-review-results
+          path: |
+            results.json
+            findings.json
